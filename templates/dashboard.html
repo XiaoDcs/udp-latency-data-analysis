@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dataset_name }} - 分析仪表板{% endblock %}
+
+{% block extra_css %}
+<style>
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+    }
+    
+    .nav-tabs .nav-link.active {
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    .tab-content {
+        padding-top: 2rem;
+    }
+    
+    .plot-container {
+        background-color: white;
+        border-radius: 0.375rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1><i class="fas fa-chart-line me-2"></i>分析仪表板</h1>
+                <p class="text-muted mb-0">数据集: <code>{{ dataset_name }}</code></p>
+            </div>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>返回首页
+                </a>
+                <button class="btn btn-outline-primary" onclick="downloadReport()">
+                    <i class="fas fa-download me-1"></i>下载报告
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 概览指标卡片 -->
+<div class="row mb-4" id="summaryCards">
+    <div class="col-12">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>正在加载分析结果...</p>
+        </div>
+    </div>
+</div>
+
+<!-- 导航标签 -->
+<ul class="nav nav-tabs" id="analysisTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" 
+                type="button" role="tab">
+            <i class="fas fa-tachometer-alt me-1"></i>总览
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="udp-tab" data-bs-toggle="tab" data-bs-target="#udp" 
+                type="button" role="tab">
+            <i class="fas fa-network-wired me-1"></i>UDP性能
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="nexfi-tab" data-bs-toggle="tab" data-bs-target="#nexfi" 
+                type="button" role="tab">
+            <i class="fas fa-wifi me-1"></i>NEXFI通信
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="gps-tab" data-bs-toggle="tab" data-bs-target="#gps" 
+                type="button" role="tab">
+            <i class="fas fa-map-marker-alt me-1"></i>GPS轨迹
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="correlation-tab" data-bs-toggle="tab" data-bs-target="#correlation" 
+                type="button" role="tab">
+            <i class="fas fa-project-diagram me-1"></i>相关性分析
+        </button>
+    </li>
+</ul>
+
+<!-- 标签内容 -->
+<div class="tab-content" id="analysisTabContent">
+    <!-- 总览标签 -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+        <div class="row">
+            <div class="col-12">
+                <h3>测试概览</h3>
+                <div id="summaryDashboard" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>生成概览图表中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- UDP性能标签 -->
+    <div class="tab-pane fade" id="udp" role="tabpanel">
+        <div class="row">
+            <div class="col-12">
+                <h3>UDP通信性能分析</h3>
+                <div id="udpPerformance" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载UDP性能图表中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEXFI通信标签 -->
+    <div class="tab-pane fade" id="nexfi" role="tabpanel">
+        <div class="row">
+            <div class="col-12">
+                <h3>NEXFI通信质量分析</h3>
+                <div id="nexfiQuality" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载NEXFI通信图表中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GPS轨迹标签 -->
+    <div class="tab-pane fade" id="gps" role="tabpanel">
+        <div class="row">
+            <div class="col-lg-8">
+                <h3>3D飞行轨迹</h3>
+                <div id="gps3dTrajectory" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载3D轨迹图中...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <h3>高度变化</h3>
+                <div id="altitudeTimeline" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载高度图表中...</p>
+                    </div>
+                </div>
+                
+                <h3>距离分析</h3>
+                <div id="distanceTimeline" class="plot-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载距离图表中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 相关性分析标签 -->
+    <div class="tab-pane fade" id="correlation" role="tabpanel">
+        <div class="row">
+            <div class="col-12">
+                <h3>通信质量与距离相关性分析</h3>
+                <div id="correlationPlots">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>加载相关性图表中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let summaryData = null;
+let figuresData = null;
+
+// 页面加载时获取数据
+$(document).ready(function() {
+    loadAnalysisResults();
+});
+
+function loadAnalysisResults() {
+    // 获取摘要数据
+    $.get('/api/summary')
+        .done(function(data) {
+            summaryData = data;
+            renderSummaryCards();
+        })
+        .fail(function() {
+            $('#summaryCards').html(`
+                <div class="col-12">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        加载分析结果失败，请重新分析数据集。
+                    </div>
+                </div>
+            `);
+        });
+    
+    // 获取图表数据
+    $.get('/api/figures')
+        .done(function(data) {
+            figuresData = data;
+            renderAllPlots();
+        })
+        .fail(function() {
+            $('.plot-container .loading').html(`
+                <div class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    加载图表失败
+                </div>
+            `);
+        });
+}
+
+function renderSummaryCards() {
+    if (!summaryData) return;
+    
+    let cardsHtml = '';
+    
+    // UDP性能卡片
+    if (summaryData.udp) {
+        const udp = summaryData.udp;
+        const lossClass = udp.packet_loss_rate < 5 ? 'text-success' : 
+                         udp.packet_loss_rate < 15 ? 'text-warning' : 'text-danger';
+        const delayClass = udp.avg_delay < 50 ? 'text-success' : 
+                          udp.avg_delay < 100 ? 'text-warning' : 'text-danger';
+        
+        cardsHtml += `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body metric-card">
+                        <div class="metric-value ${lossClass}">${udp.packet_loss_rate}%</div>
+                        <div class="metric-label">丢包率</div>
+                        <small class="text-muted">${udp.total_received}/${udp.total_sent} 包</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body metric-card">
+                        <div class="metric-value ${delayClass}">${udp.avg_delay}</div>
+                        <div class="metric-label">平均延迟 (ms)</div>
+                        <small class="text-muted">95%: ${udp.p95_delay}ms</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 距离卡片
+    if (summaryData.distance) {
+        const dist = summaryData.distance;
+        cardsHtml += `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body metric-card">
+                        <div class="metric-value text-primary">${dist.mean_distance}m</div>
+                        <div class="metric-label">平均距离</div>
+                        <small class="text-muted">范围: ${dist.min_distance}-${dist.max_distance}m</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // NEXFI质量卡片
+    if (summaryData.nexfi && summaryData.nexfi.sender) {
+        const nexfi = summaryData.nexfi.sender;
+        const rssiClass = nexfi.avg_rssi > -50 ? 'text-success' : 
+                         nexfi.avg_rssi > -70 ? 'text-warning' : 'text-danger';
+        
+        cardsHtml += `
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body metric-card">
+                        <div class="metric-value ${rssiClass}">${nexfi.avg_rssi}</div>
+                        <div class="metric-label">平均RSSI (dBm)</div>
+                        <small class="text-muted">SNR: ${nexfi.avg_snr}dB</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    $('#summaryCards').html(cardsHtml);
+}
+
+function renderAllPlots() {
+    if (!figuresData) return;
+    
+    // 渲染各个图表
+    if (figuresData.udp_performance) {
+        Plotly.newPlot('udpPerformance', figuresData.udp_performance.data, 
+                      figuresData.udp_performance.layout, {responsive: true});
+    }
+    
+    if (figuresData.nexfi_quality) {
+        Plotly.newPlot('nexfiQuality', figuresData.nexfi_quality.data, 
+                      figuresData.nexfi_quality.layout, {responsive: true});
+    }
+    
+    if (figuresData.gps_3d_trajectory) {
+        Plotly.newPlot('gps3dTrajectory', figuresData.gps_3d_trajectory.data, 
+                      figuresData.gps_3d_trajectory.layout, {responsive: true});
+    }
+    
+    if (figuresData.altitude_timeline) {
+        Plotly.newPlot('altitudeTimeline', figuresData.altitude_timeline.data, 
+                      figuresData.altitude_timeline.layout, {responsive: true});
+    }
+    
+    if (figuresData.distance_timeline) {
+        Plotly.newPlot('distanceTimeline', figuresData.distance_timeline.data, 
+                      figuresData.distance_timeline.layout, {responsive: true});
+    }
+    
+    // 相关性图表
+    let correlationHtml = '';
+    if (figuresData.delay_distance_correlation) {
+        correlationHtml += '<div id="delayDistanceCorr" class="plot-container"></div>';
+    }
+    
+    Object.keys(figuresData).forEach(key => {
+        if (key.includes('rssi_distance_correlation')) {
+            correlationHtml += `<div id="${key}" class="plot-container"></div>`;
+        }
+    });
+    
+    if (correlationHtml) {
+        $('#correlationPlots').html(correlationHtml);
+        
+        if (figuresData.delay_distance_correlation) {
+            Plotly.newPlot('delayDistanceCorr', figuresData.delay_distance_correlation.data, 
+                          figuresData.delay_distance_correlation.layout, {responsive: true});
+        }
+        
+        Object.keys(figuresData).forEach(key => {
+            if (key.includes('rssi_distance_correlation')) {
+                Plotly.newPlot(key, figuresData[key].data, 
+                              figuresData[key].layout, {responsive: true});
+            }
+        });
+    } else {
+        $('#correlationPlots').html(`
+            <div class="text-center py-4">
+                <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                <p class="text-muted">暂无相关性分析结果</p>
+            </div>
+        `);
+    }
+}
+
+function downloadReport() {
+    // 生成并下载分析报告
+    alert('报告下载功能开发中...');
+}
+
+// 窗口大小改变时重新调整图表
+$(window).resize(function() {
+    if (figuresData) {
+        Object.keys(figuresData).forEach(key => {
+            const element = document.getElementById(key.replace(/_/g, ''));
+            if (element && element.data) {
+                Plotly.Plots.resize(element);
+            }
+        });
+    }
+});
+</script>
+{% endblock %} 

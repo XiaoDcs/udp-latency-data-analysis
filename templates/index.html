@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}数据集列表 - 无人机通信分析系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-database me-2"></i>可用数据集</h1>
+            <button class="btn btn-outline-primary" onclick="refreshDatasets()">
+                <i class="fas fa-sync-alt me-1"></i>刷新
+            </button>
+        </div>
+        
+        {% if datasets %}
+            <div class="row">
+                {% for dataset in datasets %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card dataset-card" onclick="analyzeDataset('{{ dataset.name }}')">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">{{ dataset.name }}</h5>
+                            <small class="text-muted">{{ dataset.creation_time }}</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6>数据类型:</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% if dataset.has_udp %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-network-wired me-1"></i>UDP
+                                        </span>
+                                    {% endif %}
+                                    {% if dataset.has_nexfi %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-wifi me-1"></i>NEXFI
+                                        </span>
+                                    {% endif %}
+                                    {% if dataset.has_gps %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-map-marker-alt me-1"></i>GPS
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button class="btn btn-primary" onclick="event.stopPropagation(); analyzeDataset('{{ dataset.name }}')">
+                                    <i class="fas fa-chart-line me-1"></i>开始分析
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">未找到数据集</h3>
+                <p class="text-muted">请确保数据文件夹包含 sender 和 receiver 子目录，并包含相应的数据文件。</p>
+                
+                <div class="mt-4">
+                    <h5>期望的文件结构:</h5>
+                    <pre class="text-start bg-light p-3 rounded">
+20250612190350/
+├── sender/
+│   ├── udp_sender_*.csv
+│   ├── nexfi_status_*.csv
+│   └── gps_logger_*.csv
+└── receiver/
+    ├── udp_receiver_*.csv
+    ├── nexfi_status_*.csv
+    └── gps_logger_*.csv
+                    </pre>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 分析进度模态框 -->
+<div class="modal fade" id="analysisModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">数据分析中...</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p id="analysisStatus">正在加载数据...</p>
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" id="analysisProgress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshDatasets() {
+    location.reload();
+}
+
+function analyzeDataset(datasetName) {
+    // 显示分析进度模态框
+    const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+    modal.show();
+    
+    // 模拟进度更新
+    let progress = 0;
+    const progressBar = document.getElementById('analysisProgress');
+    const statusText = document.getElementById('analysisStatus');
+    
+    const steps = [
+        '正在加载数据...',
+        '分析UDP性能...',
+        '分析NEXFI通信质量...',
+        '分析GPS轨迹...',
+        '计算相关性...',
+        '生成可视化图表...',
+        '完成分析'
+    ];
+    
+    let stepIndex = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 100) progress = 100;
+        
+        progressBar.style.width = progress + '%';
+        
+        if (stepIndex < steps.length) {
+            statusText.textContent = steps[stepIndex];
+            stepIndex++;
+        }
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            statusText.textContent = '正在跳转到仪表板...';
+            
+            // 实际开始分析
+            setTimeout(() => {
+                window.location.href = `/analyze/${datasetName}`;
+            }, 1000);
+        }
+    }, 800);
+}
+
+// 页面加载时的动画效果
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.dataset-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %} 

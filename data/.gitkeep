@@ -1,0 +1,15 @@
+# 这个文件用于确保data目录被git跟踪
+# 即使data目录为空，这个文件也会被保留
+# 请将您的测试数据集放在此目录下
+
+# 期望的目录结构:
+# data/
+# └── 20250612190350/  (或其他测试日期)
+#     ├── sender/
+#     │   ├── udp_sender_*.csv
+#     │   ├── nexfi_status_*.csv
+#     │   └── gps_logger_*.csv
+#     └── receiver/
+#         ├── udp_receiver_*.csv
+#         ├── nexfi_status_*.csv
+#         └── gps_logger_*.csv 
