@@ -1,0 +1,183 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create necessary directories
+      run: |
+        mkdir -p data
+        mkdir -p uploads
+        mkdir -p static
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      
+    - name: Create static build
+      run: |
+        # 创建一个静态版本的应用
+        python -c "
+        import os
+        import json
+        
+        # 创建基本的静态文件结构
+        os.makedirs('_site', exist_ok=True)
+        os.makedirs('_site/static', exist_ok=True)
+        
+        # 复制静态文件
+        import shutil
+        if os.path.exists('static'):
+            shutil.copytree('static', '_site/static', dirs_exist_ok=True)
+        
+        # 创建基本的index.html
+        with open('_site/index.html', 'w', encoding='utf-8') as f:
+            f.write('''<!DOCTYPE html>
+<html lang=\"zh-CN\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>无人机通信数据分析系统</title>
+    <link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">
+    <link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\" rel=\"stylesheet\">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .hero-section { padding: 100px 0; color: white; text-align: center; }
+        .feature-card { background: white; border-radius: 15px; padding: 30px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .btn-custom { background: linear-gradient(45deg, #667eea, #764ba2); border: none; padding: 12px 30px; border-radius: 25px; }
+    </style>
+</head>
+<body>
+    <div class=\"hero-section\">
+        <div class=\"container\">
+            <h1 class=\"display-4 mb-4\"><i class=\"fas fa-drone me-3\"></i>无人机通信数据分析系统</h1>
+            <p class=\"lead mb-5\">专业的无人机通信性能分析工具，支持UDP通信延迟、NEXFI通信质量、GPS轨迹等多维度数据分析和可视化</p>
+            <a href=\"#features\" class=\"btn btn-light btn-lg btn-custom text-white me-3\">
+                <i class=\"fas fa-rocket me-2\"></i>了解功能
+            </a>
+            <a href=\"https://github.com/yourusername/udp-latency-data-analysis\" class=\"btn btn-outline-light btn-lg\">
+                <i class=\"fab fa-github me-2\"></i>查看源码
+            </a>
+        </div>
+    </div>
+    
+    <div class=\"container my-5\" id=\"features\">
+        <div class=\"row\">
+            <div class=\"col-md-4\">
+                <div class=\"feature-card text-center\">
+                    <i class=\"fas fa-chart-line fa-3x text-primary mb-3\"></i>
+                    <h4>数据分析</h4>
+                    <p>UDP通信性能、NEXFI通信质量、GPS轨迹等多维度分析</p>
+                </div>
+            </div>
+            <div class=\"col-md-4\">
+                <div class=\"feature-card text-center\">
+                    <i class=\"fas fa-cube fa-3x text-success mb-3\"></i>
+                    <h4>3D可视化</h4>
+                    <p>支持时间轴控制的三维轨迹动画和实时数据面板</p>
+                </div>
+            </div>
+            <div class=\"col-md-4\">
+                <div class=\"feature-card text-center\">
+                    <i class=\"fas fa-upload fa-3x text-warning mb-3\"></i>
+                    <h4>数据上传</h4>
+                    <p>支持ZIP格式数据包上传和自动解析验证</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class=\"row mt-5\">
+            <div class=\"col-12 text-center\">
+                <div class=\"feature-card\">
+                    <h3 class=\"mb-4\">如何使用</h3>
+                    <div class=\"row\">
+                        <div class=\"col-md-3\">
+                            <i class=\"fas fa-download fa-2x text-primary mb-3\"></i>
+                            <h5>1. 下载源码</h5>
+                            <p>从GitHub克隆项目到本地</p>
+                        </div>
+                        <div class=\"col-md-3\">
+                            <i class=\"fas fa-cog fa-2x text-success mb-3\"></i>
+                            <h5>2. 安装依赖</h5>
+                            <p>运行pip install -r requirements.txt</p>
+                        </div>
+                        <div class=\"col-md-3\">
+                            <i class=\"fas fa-play fa-2x text-warning mb-3\"></i>
+                            <h5>3. 启动系统</h5>
+                            <p>运行python web_app.py</p>
+                        </div>
+                        <div class=\"col-md-3\">
+                            <i class=\"fas fa-chart-bar fa-2x text-info mb-3\"></i>
+                            <h5>4. 分析数据</h5>
+                            <p>上传数据集并查看分析结果</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class=\"bg-dark text-white text-center py-4\">
+        <div class=\"container\">
+            <p>&copy; 2024 无人机通信数据分析系统. 基于MIT许可证开源.</p>
+            <p>
+                <a href=\"https://github.com/yourusername/udp-latency-data-analysis\" class=\"text-white me-3\">
+                    <i class=\"fab fa-github\"></i> GitHub
+                </a>
+                <a href=\"#\" class=\"text-white\">
+                    <i class=\"fas fa-book\"></i> 文档
+                </a>
+            </p>
+        </div>
+    </footer>
+    
+    <script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>
+</body>
+</html>''')
+        
+        print('Static site generated successfully!')
+        "
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: '_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2 

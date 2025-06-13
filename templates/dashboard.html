@@ -4,43 +4,398 @@
 
 {% block extra_css %}
 <style>
+    /* 整体布局优化 */
+    body {
+        background-color: #f5f7fa;
+    }
+    
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dashboard-header h1 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .dashboard-header .dataset-name {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+    
+    /* 导航标签美化 */
+    .nav-tabs {
+        border-bottom: 2px solid #e9ecef;
+        background-color: white;
+        padding: 1rem 1rem 0;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
     .nav-tabs .nav-link {
         border: none;
         border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        margin-right: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        color: #667eea;
+        background-color: #f8f9fa;
     }
     
     .nav-tabs .nav-link.active {
-        border-bottom-color: #0d6efd;
+        border-bottom-color: #667eea;
+        color: #667eea;
         background-color: transparent;
     }
     
     .tab-content {
-        padding-top: 2rem;
+        background-color: white;
+        padding: 2rem;
+        border-radius: 0 0 0.5rem 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
     
+    /* 图表容器优化 */
     .plot-container {
         background-color: white;
-        border-radius: 0.375rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        padding: 1.5rem;
         margin-bottom: 2rem;
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .plot-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+    
+    .plot-container h4 {
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    /* 统计卡片美化 */
+    .metric-card {
+        text-align: center;
+        padding: 2rem 1rem;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 500;
+    }
+    
+    .metric-card small {
+        display: block;
+        margin-top: 0.5rem;
+        color: #999;
+        font-size: 0.8rem;
+    }
+    
+    /* 汇总统计样式 */
+    .summary-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .summary-stats h4 {
+        margin-bottom: 2rem;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        background: rgba(255,255,255,0.15);
+        border-radius: 0.375rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .stat-label {
+        font-weight: 500;
+        opacity: 0.95;
+    }
+    
+    .stat-value {
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    
+    /* 新的统计布局样式 */
+    .stats-section {
+        background: rgba(255,255,255,0.1);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        height: 100%;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .section-title {
+        color: white;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .stats-grid.small {
+        gap: 0.5rem;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 0.25rem;
+        border-left: 3px solid rgba(255,255,255,0.5);
+    }
+    
+    .stat-item .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .stat-item .stat-value {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .sub-section {
+        background: rgba(255,255,255,0.05);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        height: 100%;
+    }
+    
+    .sub-title {
+        color: white;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* 相关性分析样式 */
+    .correlation-item {
+        background: rgba(255,255,255,0.1);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .correlation-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        text-transform: capitalize;
+    }
+    
+    .correlation-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.85rem;
+    }
+    
+    .correlation-value {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .correlation-sig {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .summary-stats {
+            padding: 1.5rem;
+        }
+        
+        .stats-section {
+            padding: 1rem;
+        }
+        
+        .stat-item {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.25rem;
+        }
+        
+        .correlation-stats {
+            font-size: 0.8rem;
+        }
+    }
+    
+    /* 3D轨迹回放控制面板 */
+    .trajectory-controls {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .trajectory-controls .btn {
+        margin-right: 0.5rem;
+    }
+    
+    .time-slider {
+        width: 100%;
+        margin: 1rem 0;
+    }
+    
+    .time-display {
+        text-align: center;
+        font-weight: 600;
+        color: #667eea;
+        margin-top: 0.5rem;
+    }
+    
+    /* 3D场景容器 */
+    #trajectoryScene {
+        width: 100%;
+        height: 600px;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* 实时数据面板 */
+    .realtime-data-panel {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-top: 1rem;
+    }
+    
+    .drone-info {
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+    
+    .drone-info.sender {
+        background: rgba(102, 126, 234, 0.1);
+        border-left: 4px solid #667eea;
+    }
+    
+    .drone-info.receiver {
+        background: rgba(118, 75, 162, 0.1);
+        border-left: 4px solid #764ba2;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .metric-value {
+            font-size: 2rem;
+        }
+        
+        .nav-tabs .nav-link {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .summary-stats {
+            padding: 1.5rem;
+        }
+    }
+    
+    /* 加载动画优化 */
+    .loading {
+        text-align: center;
+        padding: 4rem 0;
+        color: #6c757d;
+    }
+    
+    .loading i {
+        margin-bottom: 1rem;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* 确保plotly图表响应式 */
+    .js-plotly-plot {
+        max-width: 100% !important;
+        height: auto !important;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+<!-- 仪表板头部 -->
+<div class="dashboard-header">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h1><i class="fas fa-chart-line me-2"></i>分析仪表板</h1>
-                <p class="text-muted mb-0">数据集: <code>{{ dataset_name }}</code></p>
+                <p class="dataset-name mb-0">数据集: <code>{{ dataset_name }}</code></p>
             </div>
             <div>
-                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-2">
+                <a href="{{ url_for('index') }}" class="btn btn-light me-2">
                     <i class="fas fa-arrow-left me-1"></i>返回首页
                 </a>
-                <button class="btn btn-outline-primary" onclick="downloadReport()">
+                <button class="btn btn-light" onclick="downloadReport()">
                     <i class="fas fa-download me-1"></i>下载报告
                 </button>
             </div>
@@ -48,138 +403,234 @@
     </div>
 </div>
 
-<!-- 概览指标卡片 -->
-<div class="row mb-4" id="summaryCards">
-    <div class="col-12">
-        <div class="loading">
-            <i class="fas fa-spinner fa-spin fa-2x"></i>
-            <p>正在加载分析结果...</p>
+<div class="container-fluid">
+    <!-- 汇总统计数据 -->
+    <div class="row mb-4" id="summaryStatsSection">
+        <div class="col-12">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>正在加载汇总统计数据...</p>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- 导航标签 -->
-<ul class="nav nav-tabs" id="analysisTab" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" 
-                type="button" role="tab">
-            <i class="fas fa-tachometer-alt me-1"></i>总览
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="udp-tab" data-bs-toggle="tab" data-bs-target="#udp" 
-                type="button" role="tab">
-            <i class="fas fa-network-wired me-1"></i>UDP性能
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="nexfi-tab" data-bs-toggle="tab" data-bs-target="#nexfi" 
-                type="button" role="tab">
-            <i class="fas fa-wifi me-1"></i>NEXFI通信
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="gps-tab" data-bs-toggle="tab" data-bs-target="#gps" 
-                type="button" role="tab">
-            <i class="fas fa-map-marker-alt me-1"></i>GPS轨迹
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="correlation-tab" data-bs-toggle="tab" data-bs-target="#correlation" 
-                type="button" role="tab">
-            <i class="fas fa-project-diagram me-1"></i>相关性分析
-        </button>
-    </li>
-</ul>
+    <!-- 概览指标卡片 -->
+    <div class="row mb-4" id="summaryCards">
+        <div class="col-12">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>正在加载分析结果...</p>
+            </div>
+        </div>
+    </div>
 
-<!-- 标签内容 -->
-<div class="tab-content" id="analysisTabContent">
-    <!-- 总览标签 -->
-    <div class="tab-pane fade show active" id="overview" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <h3>测试概览</h3>
-                <div id="summaryDashboard" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>生成概览图表中...</p>
+    <!-- 导航标签 -->
+    <ul class="nav nav-tabs" id="analysisTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="trajectory-tab" data-bs-toggle="tab" data-bs-target="#trajectory" 
+                    type="button" role="tab">
+                <i class="fas fa-route me-1"></i>3D轨迹回放
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="udp-tab" data-bs-toggle="tab" data-bs-target="#udp" 
+                    type="button" role="tab">
+                <i class="fas fa-network-wired me-1"></i>UDP性能
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="nexfi-tab" data-bs-toggle="tab" data-bs-target="#nexfi" 
+                    type="button" role="tab">
+                <i class="fas fa-wifi me-1"></i>NEXFI通信
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="gps-tab" data-bs-toggle="tab" data-bs-target="#gps" 
+                    type="button" role="tab">
+                <i class="fas fa-map-marker-alt me-1"></i>GPS分析
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="correlation-tab" data-bs-toggle="tab" data-bs-target="#correlation" 
+                    type="button" role="tab">
+                <i class="fas fa-project-diagram me-1"></i>相关性分析
+            </button>
+        </li>
+    </ul>
+
+    <!-- 标签内容 -->
+    <div class="tab-content" id="analysisTabContent">
+        <!-- 3D轨迹回放标签 -->
+        <div class="tab-pane fade show active" id="trajectory" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="trajectory-controls">
+                        <h4><i class="fas fa-play-circle me-2"></i>轨迹回放控制</h4>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-primary" onclick="playTrajectory()">
+                                <i class="fas fa-play"></i> 播放
+                            </button>
+                            <button class="btn btn-secondary" onclick="pauseTrajectory()">
+                                <i class="fas fa-pause"></i> 暂停
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetTrajectory()">
+                                <i class="fas fa-redo"></i> 重置
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <label for="timeSlider" class="form-label">时间轴</label>
+                            <input type="range" class="form-range time-slider" id="timeSlider" 
+                                   min="0" max="100" value="0" oninput="updateTrajectoryTime(this.value)">
+                            <div class="time-display" id="timeDisplay">00:00:00</div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="speedControl" class="form-label">播放速度</label>
+                            <select class="form-select" id="speedControl" onchange="updatePlaybackSpeed(this.value)">
+                                <option value="0.5">0.5x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="2">2x</option>
+                                <option value="5">5x</option>
+                                <option value="10">10x</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="trajectoryScene"></div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="realtime-data-panel">
+                        <h4><i class="fas fa-info-circle me-2"></i>实时数据</h4>
+                        <div class="drone-info sender">
+                            <h5><i class="fas fa-paper-plane me-2"></i>发送方 (Sender)</h5>
+                            <div id="senderRealtimeData">
+                                <p>位置: <span id="senderPosition">--</span></p>
+                                <p>高度: <span id="senderAltitude">--</span> m</p>
+                                <p>速度: <span id="senderSpeed">--</span> m/s</p>
+                                <p>RSSI: <span id="senderRSSI">--</span> dBm</p>
+                            </div>
+                        </div>
+                        <div class="drone-info receiver">
+                            <h5><i class="fas fa-satellite-dish me-2"></i>接收方 (Receiver)</h5>
+                            <div id="receiverRealtimeData">
+                                <p>位置: <span id="receiverPosition">--</span></p>
+                                <p>高度: <span id="receiverAltitude">--</span> m</p>
+                                <p>速度: <span id="receiverSpeed">--</span> m/s</p>
+                                <p>RSSI: <span id="receiverRSSI">--</span> dBm</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <h5><i class="fas fa-ruler me-2"></i>双机状态</h5>
+                            <p>3D距离: <span id="currentDistance" class="fw-bold">--</span> m</p>
+                            <p>当前延迟: <span id="currentDelay" class="fw-bold">--</span> ms</p>
+                            <p>丢包率: <span id="currentPacketLoss" class="fw-bold">--</span> %</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- UDP性能标签 -->
-    <div class="tab-pane fade" id="udp" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <h3>UDP通信性能分析</h3>
-                <div id="udpPerformance" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载UDP性能图表中...</p>
+        
+        <!-- UDP性能标签 -->
+        <div class="tab-pane fade" id="udp" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>UDP通信性能分析</h4>
+                        <div id="udpPerformance">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载UDP性能图表中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- NEXFI通信标签 -->
-    <div class="tab-pane fade" id="nexfi" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <h3>NEXFI通信质量分析</h3>
-                <div id="nexfiQuality" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载NEXFI通信图表中...</p>
+        
+        <!-- NEXFI通信标签 -->
+        <div class="tab-pane fade" id="nexfi" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>NEXFI通信质量分析</h4>
+                        <div id="nexfiQuality">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载NEXFI通信图表中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- GPS轨迹标签 -->
-    <div class="tab-pane fade" id="gps" role="tabpanel">
-        <div class="row">
-            <div class="col-lg-8">
-                <h3>3D飞行轨迹</h3>
-                <div id="gps3dTrajectory" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载3D轨迹图中...</p>
+        
+        <!-- GPS分析标签 -->
+        <div class="tab-pane fade" id="gps" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>高度变化</h4>
+                        <div id="altitudeTimeline">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载高度图表中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4">
-                <h3>高度变化</h3>
-                <div id="altitudeTimeline" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载高度图表中...</p>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>飞行速度</h4>
+                        <div id="speedTimeline">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载速度图表中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <h3>距离分析</h3>
-                <div id="distanceTimeline" class="plot-container">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载距离图表中...</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>距离分析</h4>
+                        <div id="distanceTimeline">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载距离图表中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="plot-container">
+                        <h4>距离统计</h4>
+                        <div id="distanceStatistics">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>加载距离统计中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- 相关性分析标签 -->
-    <div class="tab-pane fade" id="correlation" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <h3>通信质量与距离相关性分析</h3>
-                <div id="correlationPlots">
-                    <div class="loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>加载相关性图表中...</p>
+        
+        <!-- 相关性分析标签 -->
+        <div class="tab-pane fade" id="correlation" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <h3>通信质量与距离相关性分析</h3>
+                    <div id="correlationPlots">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载相关性图表中...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -189,13 +640,25 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Three.js -->
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
 <script>
 let summaryData = null;
 let figuresData = null;
+let trajectoryData = null;
+let scene, camera, renderer, controls;
+let senderMesh, receiverMesh;
+let trajectoryAnimation = null;
+let currentTimeIndex = 0;
+let isPlaying = false;
+let playbackSpeed = 1;
 
 // 页面加载时获取数据
 $(document).ready(function() {
     loadAnalysisResults();
+    initThreeJS();
 });
 
 function loadAnalysisResults() {
@@ -203,9 +666,11 @@ function loadAnalysisResults() {
     $.get('/api/summary')
         .done(function(data) {
             summaryData = data;
+            renderSummaryStats();
             renderSummaryCards();
         })
-        .fail(function() {
+        .fail(function(xhr) {
+            console.error('Failed to load summary:', xhr.responseText);
             $('#summaryCards').html(`
                 <div class="col-12">
                     <div class="alert alert-danger">
@@ -230,6 +695,380 @@ function loadAnalysisResults() {
                 </div>
             `);
         });
+    
+    // 获取轨迹数据
+    $.get('/api/trajectory_data')
+        .done(function(data) {
+            trajectoryData = data;
+            setupTrajectoryAnimation();
+        })
+        .fail(function() {
+            console.log('No trajectory data endpoint yet');
+        });
+}
+
+function renderSummaryStats() {
+    if (!summaryData) return;
+    
+    let statsHtml = `
+        <div class="col-12">
+            <div class="summary-stats">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-chart-bar me-2"></i>测试汇总统计</h4>
+                    <button class="btn btn-light btn-sm" onclick="copySummaryToClipboard()">
+                        <i class="fas fa-copy me-1"></i>复制统计数据
+                    </button>
+                </div>
+                <div class="row g-4">
+    `;
+    
+    // UDP统计
+    if (summaryData.udp) {
+        const udp = summaryData.udp;
+        statsHtml += `
+            <div class="col-lg-6 col-xl-4">
+                <div class="stats-section">
+                    <h5 class="section-title"><i class="fas fa-network-wired me-2"></i>UDP通信性能</h5>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">总发包数</span>
+                            <span class="stat-value">${udp.total_sent.toLocaleString()}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">总收包数</span>
+                            <span class="stat-value">${udp.total_received.toLocaleString()}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">丢包率</span>
+                            <span class="stat-value">${udp.packet_loss_rate}%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平均延迟</span>
+                            <span class="stat-value">${udp.avg_delay} ms</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">最大延迟</span>
+                            <span class="stat-value">${udp.max_delay} ms</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">吞吐量</span>
+                            <span class="stat-value">${udp.throughput} kbps</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">测试时长</span>
+                            <span class="stat-value">${udp.test_duration} 秒</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 距离统计
+    if (summaryData.distance) {
+        const dist = summaryData.distance;
+        statsHtml += `
+            <div class="col-lg-6 col-xl-4">
+                <div class="stats-section">
+                    <h5 class="section-title"><i class="fas fa-ruler me-2"></i>3D距离统计</h5>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">最小3D距离</span>
+                            <span class="stat-value">${dist.min_distance_3d} m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">最大3D距离</span>
+                            <span class="stat-value">${dist.max_distance_3d} m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平均3D距离</span>
+                            <span class="stat-value">${dist.mean_distance_3d} m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">距离标准差</span>
+                            <span class="stat-value">${dist.std_distance_3d} m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平均水平距离</span>
+                            <span class="stat-value">${dist.mean_distance_horizontal} m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">平均垂直距离</span>
+                            <span class="stat-value">${dist.mean_distance_vertical} m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // GPS和NEXFI统计
+    let gpsNexfiHtml = '<div class="col-lg-12 col-xl-4"><div class="stats-section">';
+    
+    // GPS统计
+    if (summaryData.gps) {
+        gpsNexfiHtml += '<h5 class="section-title"><i class="fas fa-map-marker-alt me-2"></i>GPS轨迹分析</h5>';
+        gpsNexfiHtml += '<div class="row g-3">';
+        
+        for (const [role, stats] of Object.entries(summaryData.gps)) {
+            gpsNexfiHtml += `
+                <div class="col-md-6">
+                    <div class="sub-section">
+                        <h6 class="sub-title">${role === 'sender' ? '发送方' : '接收方'}</h6>
+                        <div class="stats-grid small">
+                            <div class="stat-item">
+                                <span class="stat-label">数据点数</span>
+                                <span class="stat-value">${stats.data_points}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">飞行距离</span>
+                                <span class="stat-value">${stats.total_distance} m</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">高度变化</span>
+                                <span class="stat-value">${stats.altitude_change} m</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">最大速度</span>
+                                <span class="stat-value">${stats.max_speed} m/s</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">飞行时间</span>
+                                <span class="stat-value">${stats.flight_time} s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        gpsNexfiHtml += '</div>';
+    }
+    
+    // NEXFI统计
+    if (summaryData.nexfi) {
+        gpsNexfiHtml += '<h5 class="section-title mt-4"><i class="fas fa-wifi me-2"></i>NEXFI通信质量</h5>';
+        gpsNexfiHtml += '<div class="row g-3">';
+        
+        for (const [role, stats] of Object.entries(summaryData.nexfi)) {
+            gpsNexfiHtml += `
+                <div class="col-md-6">
+                    <div class="sub-section">
+                        <h6 class="sub-title">${role === 'sender' ? '发送方' : '接收方'}</h6>
+                        <div class="stats-grid small">
+                            <div class="stat-item">
+                                <span class="stat-label">平均RSSI</span>
+                                <span class="stat-value">${stats.avg_rssi} dBm</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">平均SNR</span>
+                                <span class="stat-value">${stats.avg_snr} dB</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">平均吞吐量</span>
+                                <span class="stat-value">${stats.avg_throughput} Mbps</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">链路质量</span>
+                                <span class="stat-value">${stats.avg_link_quality}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        gpsNexfiHtml += '</div>';
+    }
+    
+    gpsNexfiHtml += '</div></div>';
+    statsHtml += gpsNexfiHtml;
+    
+    // 相关性分析结果
+    if (summaryData.correlations) {
+        statsHtml += `
+            <div class="col-12">
+                <div class="stats-section">
+                    <h5 class="section-title"><i class="fas fa-project-diagram me-2"></i>相关性分析结果</h5>
+                    <div class="row g-3">
+        `;
+        
+        for (const [key, corr] of Object.entries(summaryData.correlations)) {
+            const displayName = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const significanceClass = corr.significant ? 'text-success' : 'text-warning';
+            statsHtml += `
+                <div class="col-md-4">
+                    <div class="correlation-item">
+                        <div class="correlation-title">${displayName}</div>
+                        <div class="correlation-stats">
+                            <span class="correlation-value">r = ${corr.correlation}</span>
+                            <span class="correlation-p">p = ${corr.p_value}</span>
+                            <span class="correlation-sig ${significanceClass}">
+                                ${corr.significant ? '显著' : '不显著'}
+                            </span>
+                            <span class="correlation-n">n = ${corr.data_points}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        statsHtml += '</div></div></div>';
+    }
+    
+    // 时间范围信息
+    if (summaryData.time_range) {
+        const timeRange = summaryData.time_range;
+        const duration = timeRange.duration_seconds;
+        const minutes = Math.floor(duration / 60);
+        const seconds = Math.floor(duration % 60);
+        
+        statsHtml += `
+            <div class="col-12">
+                <div class="stats-section">
+                    <h5 class="section-title"><i class="fas fa-clock me-2"></i>数据时间范围</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="sub-section">
+                                <h6 class="sub-title">有效数据时间范围</h6>
+                                <div class="stats-grid small">
+                                    <div class="stat-item">
+                                        <span class="stat-label">开始时间</span>
+                                        <span class="stat-value">${timeRange.effective_start}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">结束时间</span>
+                                        <span class="stat-value">${timeRange.effective_end}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">持续时间</span>
+                                        <span class="stat-value">${minutes}分${seconds}秒</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="sub-section">
+                                <h6 class="sub-title">各数据源时间范围</h6>
+                                <div class="stats-grid small">
+        `;
+        
+        // 显示各个数据源的时间范围
+        for (const [source, range] of Object.entries(timeRange.individual_ranges)) {
+            const sourceName = source.replace(/_/g, ' ').toUpperCase();
+            statsHtml += `
+                <div class="stat-item">
+                    <span class="stat-label">${sourceName}</span>
+                    <span class="stat-value" style="font-size: 0.8rem;">${range.start.split(' ')[1]} - ${range.end.split(' ')[1]}</span>
+                </div>
+            `;
+        }
+        
+        statsHtml += `
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    statsHtml += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#summaryStatsSection').html(statsHtml);
+}
+
+// 复制统计数据到剪贴板
+function copySummaryToClipboard() {
+    if (!summaryData) return;
+    
+    let text = "无人机通信测试汇总统计\n";
+    text += "=".repeat(50) + "\n\n";
+    
+    // UDP统计
+    if (summaryData.udp) {
+        const udp = summaryData.udp;
+        text += "UDP通信性能:\n";
+        text += `  总发包数: ${udp.total_sent}\n`;
+        text += `  总收包数: ${udp.total_received}\n`;
+        text += `  丢包率: ${udp.packet_loss_rate}%\n`;
+        text += `  平均延迟: ${udp.avg_delay} ms\n`;
+        text += `  最大延迟: ${udp.max_delay} ms\n`;
+        text += `  吞吐量: ${udp.throughput} kbps\n`;
+        text += `  测试时长: ${udp.test_duration} 秒\n\n`;
+    }
+    
+    // 距离统计
+    if (summaryData.distance) {
+        const dist = summaryData.distance;
+        text += "3D距离统计:\n";
+        text += `  最小3D距离: ${dist.min_distance_3d} m\n`;
+        text += `  最大3D距离: ${dist.max_distance_3d} m\n`;
+        text += `  平均3D距离: ${dist.mean_distance_3d} m\n`;
+        text += `  距离标准差: ${dist.std_distance_3d} m\n`;
+        text += `  平均水平距离: ${dist.mean_distance_horizontal} m\n`;
+        text += `  平均垂直距离: ${dist.mean_distance_vertical} m\n\n`;
+    }
+    
+    // GPS统计
+    if (summaryData.gps) {
+        text += "GPS轨迹分析:\n";
+        for (const [role, stats] of Object.entries(summaryData.gps)) {
+            text += `  ${role === 'sender' ? '发送方' : '接收方'}:\n`;
+            text += `    数据点数: ${stats.data_points}\n`;
+            text += `    飞行距离: ${stats.total_distance} m\n`;
+            text += `    高度变化: ${stats.altitude_change} m\n`;
+            text += `    最大速度: ${stats.max_speed} m/s\n`;
+            text += `    飞行时间: ${stats.flight_time} s\n`;
+        }
+        text += "\n";
+    }
+    
+    // NEXFI统计
+    if (summaryData.nexfi) {
+        text += "NEXFI通信质量:\n";
+        for (const [role, stats] of Object.entries(summaryData.nexfi)) {
+            text += `  ${role === 'sender' ? '发送方' : '接收方'}:\n`;
+            text += `    平均RSSI: ${stats.avg_rssi} dBm\n`;
+            text += `    平均SNR: ${stats.avg_snr} dB\n`;
+            text += `    平均吞吐量: ${stats.avg_throughput} Mbps\n`;
+            text += `    链路质量: ${stats.avg_link_quality}\n`;
+        }
+        text += "\n";
+    }
+    
+    // 相关性分析
+    if (summaryData.correlations) {
+        text += "相关性分析结果:\n";
+        for (const [key, corr] of Object.entries(summaryData.correlations)) {
+            const displayName = key.replace(/_/g, ' ');
+            text += `  ${displayName}: r=${corr.correlation}, p=${corr.p_value} ${corr.significant ? '(显著)' : '(不显著)'} (n=${corr.data_points})\n`;
+        }
+    }
+    
+    // 复制到剪贴板
+    navigator.clipboard.writeText(text).then(() => {
+        // 显示成功提示
+        const btn = document.querySelector('button[onclick="copySummaryToClipboard()"]');
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>已复制';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-light');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-light');
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('复制失败:', err);
+        alert('复制失败，请手动选择文本复制');
+    });
 }
 
 function renderSummaryCards() {
@@ -246,22 +1085,18 @@ function renderSummaryCards() {
                           udp.avg_delay < 100 ? 'text-warning' : 'text-danger';
         
         cardsHtml += `
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body metric-card">
-                        <div class="metric-value ${lossClass}">${udp.packet_loss_rate}%</div>
-                        <div class="metric-label">丢包率</div>
-                        <small class="text-muted">${udp.total_received}/${udp.total_sent} 包</small>
-                    </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="metric-card">
+                    <div class="metric-value ${lossClass}">${udp.packet_loss_rate}%</div>
+                    <div class="metric-label">丢包率</div>
+                    <small>${udp.total_received}/${udp.total_sent} 包</small>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body metric-card">
-                        <div class="metric-value ${delayClass}">${udp.avg_delay}</div>
-                        <div class="metric-label">平均延迟 (ms)</div>
-                        <small class="text-muted">95%: ${udp.p95_delay}ms</small>
-                    </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="metric-card">
+                    <div class="metric-value ${delayClass}">${udp.avg_delay}</div>
+                    <div class="metric-label">平均延迟 (ms)</div>
+                    <small>最大: ${udp.max_delay}ms</small>
                 </div>
             </div>
         `;
@@ -271,13 +1106,11 @@ function renderSummaryCards() {
     if (summaryData.distance) {
         const dist = summaryData.distance;
         cardsHtml += `
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body metric-card">
-                        <div class="metric-value text-primary">${dist.mean_distance}m</div>
-                        <div class="metric-label">平均距离</div>
-                        <small class="text-muted">范围: ${dist.min_distance}-${dist.max_distance}m</small>
-                    </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="metric-card">
+                    <div class="metric-value text-primary">${dist.mean_distance_3d}m</div>
+                    <div class="metric-label">平均3D距离</div>
+                    <small>范围: ${dist.min_distance_3d}-${dist.max_distance_3d}m</small>
                 </div>
             </div>
         `;
@@ -290,13 +1123,11 @@ function renderSummaryCards() {
                          nexfi.avg_rssi > -70 ? 'text-warning' : 'text-danger';
         
         cardsHtml += `
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body metric-card">
-                        <div class="metric-value ${rssiClass}">${nexfi.avg_rssi}</div>
-                        <div class="metric-label">平均RSSI (dBm)</div>
-                        <small class="text-muted">SNR: ${nexfi.avg_snr}dB</small>
-                    </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="metric-card">
+                    <div class="metric-value ${rssiClass}">${nexfi.avg_rssi}</div>
+                    <div class="metric-label">平均RSSI (dBm)</div>
+                    <small>SNR: ${nexfi.avg_snr}dB</small>
                 </div>
             </div>
         `;
@@ -308,41 +1139,60 @@ function renderSummaryCards() {
 function renderAllPlots() {
     if (!figuresData) return;
     
-    // 渲染各个图表
+    // 渲染各个图表，设置响应式配置但保留工具栏
+    const plotConfig = {
+        responsive: true, 
+        displayModeBar: true,  // 显示工具栏
+        displaylogo: false,
+        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],  // 移除不常用的工具
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'drone_analysis_chart',
+            height: 600,
+            width: 800,
+            scale: 1
+        }
+    };
+    
     if (figuresData.udp_performance) {
         Plotly.newPlot('udpPerformance', figuresData.udp_performance.data, 
-                      figuresData.udp_performance.layout, {responsive: true});
+                      figuresData.udp_performance.layout, plotConfig);
     }
     
     if (figuresData.nexfi_quality) {
         Plotly.newPlot('nexfiQuality', figuresData.nexfi_quality.data, 
-                      figuresData.nexfi_quality.layout, {responsive: true});
-    }
-    
-    if (figuresData.gps_3d_trajectory) {
-        Plotly.newPlot('gps3dTrajectory', figuresData.gps_3d_trajectory.data, 
-                      figuresData.gps_3d_trajectory.layout, {responsive: true});
+                      figuresData.nexfi_quality.layout, plotConfig);
     }
     
     if (figuresData.altitude_timeline) {
         Plotly.newPlot('altitudeTimeline', figuresData.altitude_timeline.data, 
-                      figuresData.altitude_timeline.layout, {responsive: true});
+                      figuresData.altitude_timeline.layout, plotConfig);
+    }
+    
+    if (figuresData.speed_timeline) {
+        Plotly.newPlot('speedTimeline', figuresData.speed_timeline.data, 
+                      figuresData.speed_timeline.layout, plotConfig);
     }
     
     if (figuresData.distance_timeline) {
         Plotly.newPlot('distanceTimeline', figuresData.distance_timeline.data, 
-                      figuresData.distance_timeline.layout, {responsive: true});
+                      figuresData.distance_timeline.layout, plotConfig);
+    }
+    
+    if (figuresData.distance_statistics) {
+        Plotly.newPlot('distanceStatistics', figuresData.distance_statistics.data, 
+                      figuresData.distance_statistics.layout, plotConfig);
     }
     
     // 相关性图表
     let correlationHtml = '';
     if (figuresData.delay_distance_correlation) {
-        correlationHtml += '<div id="delayDistanceCorr" class="plot-container"></div>';
+        correlationHtml += '<div class="plot-container"><div id="delayDistanceCorr"></div></div>';
     }
     
     Object.keys(figuresData).forEach(key => {
         if (key.includes('rssi_distance_correlation')) {
-            correlationHtml += `<div id="${key}" class="plot-container"></div>`;
+            correlationHtml += `<div class="plot-container"><div id="${key}"></div></div>`;
         }
     });
     
@@ -351,13 +1201,13 @@ function renderAllPlots() {
         
         if (figuresData.delay_distance_correlation) {
             Plotly.newPlot('delayDistanceCorr', figuresData.delay_distance_correlation.data, 
-                          figuresData.delay_distance_correlation.layout, {responsive: true});
+                          figuresData.delay_distance_correlation.layout, plotConfig);
         }
         
         Object.keys(figuresData).forEach(key => {
             if (key.includes('rssi_distance_correlation')) {
                 Plotly.newPlot(key, figuresData[key].data, 
-                              figuresData[key].layout, {responsive: true});
+                              figuresData[key].layout, plotConfig);
             }
         });
     } else {
@@ -370,20 +1220,361 @@ function renderAllPlots() {
     }
 }
 
+// Three.js 3D轨迹回放功能
+function initThreeJS() {
+    const container = document.getElementById('trajectoryScene');
+    if (!container) {
+        console.error('轨迹场景容器未找到');
+        return;
+    }
+    
+    // 检查Three.js是否加载
+    if (typeof THREE === 'undefined') {
+        console.error('Three.js未加载');
+        setTimeout(initThreeJS, 1000);  // 1秒后重试
+        return;
+    }
+    
+    try {
+        // 创建场景
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        scene.fog = new THREE.Fog(0xf0f0f0, 100, 1000);
+        
+        // 创建相机
+        camera = new THREE.PerspectiveCamera(
+            75, 
+            container.clientWidth / container.clientHeight, 
+            0.1, 
+            1000
+        );
+        camera.position.set(100, 100, 100);
+        
+        // 创建渲染器
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+        
+        // 检查OrbitControls是否可用
+        if (typeof THREE.OrbitControls !== 'undefined') {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+        } else {
+            console.warn('OrbitControls未加载，使用基本相机控制');
+        }
+        
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        
+        // 添加地面网格
+        const gridHelper = new THREE.GridHelper(200, 20, 0x888888, 0xcccccc);
+        scene.add(gridHelper);
+        
+        // 添加坐标轴
+        const axesHelper = new THREE.AxesHelper(50);
+        scene.add(axesHelper);
+        
+        // 创建无人机模型（简单的几何体表示）
+        const droneGeometry = new THREE.ConeGeometry(2, 4, 4);
+        
+        // 发送方无人机（蓝色）
+        const senderMaterial = new THREE.MeshPhongMaterial({ color: 0x667eea });
+        senderMesh = new THREE.Mesh(droneGeometry, senderMaterial);
+        senderMesh.castShadow = true;
+        senderMesh.rotation.x = Math.PI;  // 让锥体尖端朝下
+        scene.add(senderMesh);
+        
+        // 接收方无人机（紫色）
+        const receiverMaterial = new THREE.MeshPhongMaterial({ color: 0x764ba2 });
+        receiverMesh = new THREE.Mesh(droneGeometry, receiverMaterial);
+        receiverMesh.castShadow = true;
+        receiverMesh.rotation.x = Math.PI;  // 让锥体尖端朝下
+        scene.add(receiverMesh);
+        
+        // 添加轨迹线
+        window.senderTrail = [];
+        window.receiverTrail = [];
+        
+        // 渲染循环
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+        
+        console.log('Three.js 初始化成功');
+        
+    } catch (error) {
+        console.error('Three.js 初始化失败:', error);
+    }
+}
+
+function setupTrajectoryAnimation() {
+    if (!trajectoryData) {
+        console.log('轨迹数据未加载');
+        return;
+    }
+    
+    console.log('设置轨迹动画，数据点数:', {
+        sender: trajectoryData.sender.length,
+        receiver: trajectoryData.receiver.length,
+        metrics: trajectoryData.metrics.length
+    });
+    
+    // 设置时间轴
+    const senderTimestamps = trajectoryData.sender.map(p => new Date(p.timestamp).getTime());
+    const receiverTimestamps = trajectoryData.receiver.map(p => new Date(p.timestamp).getTime());
+    
+    const minTime = Math.min(
+        Math.min(...senderTimestamps),
+        Math.min(...receiverTimestamps)
+    );
+    const maxTime = Math.max(
+        Math.max(...senderTimestamps),
+        Math.max(...receiverTimestamps)
+    );
+    
+    window.trajectoryTimeRange = { min: minTime, max: maxTime };
+    window.trajectoryDuration = maxTime - minTime;
+    
+    // 初始化轨迹
+    updateTrajectoryTime(0);
+    
+    console.log('轨迹动画设置完成');
+    console.log(`时间范围: ${new Date(minTime).toLocaleTimeString()} - ${new Date(maxTime).toLocaleTimeString()}`);
+    console.log(`持续时间: ${(window.trajectoryDuration / 1000).toFixed(1)} 秒`);
+}
+
+function playTrajectory() {
+    if (!trajectoryData || isPlaying) return;
+    
+    isPlaying = true;
+    const startTime = Date.now() - (currentTimeIndex / 100 * window.trajectoryDuration);
+    
+    function updateAnimation() {
+        if (!isPlaying) return;
+        
+        const elapsed = Date.now() - startTime;
+        const progress = (elapsed * playbackSpeed) / window.trajectoryDuration;
+        
+        if (progress >= 1) {
+            isPlaying = false;
+            currentTimeIndex = 100;
+            document.getElementById('timeSlider').value = 100;
+            updateTrajectoryTime(100);
+            return;
+        }
+        
+        currentTimeIndex = progress * 100;
+        document.getElementById('timeSlider').value = currentTimeIndex;
+        updateTrajectoryTime(currentTimeIndex);
+        
+        requestAnimationFrame(updateAnimation);
+    }
+    
+    updateAnimation();
+}
+
+function pauseTrajectory() {
+    isPlaying = false;
+}
+
+function resetTrajectory() {
+    isPlaying = false;
+    currentTimeIndex = 0;
+    document.getElementById('timeSlider').value = 0;
+    updateTrajectoryTime(0);
+    
+    // 清除轨迹线
+    if (window.senderTrailLine) {
+        scene.remove(window.senderTrailLine);
+    }
+    if (window.receiverTrailLine) {
+        scene.remove(window.receiverTrailLine);
+    }
+    window.senderTrail = [];
+    window.receiverTrail = [];
+}
+
+function updateTrajectoryTime(value) {
+    if (!trajectoryData || !window.trajectoryTimeRange) return;
+    
+    currentTimeIndex = value;
+    const currentTime = window.trajectoryTimeRange.min + (value / 100) * window.trajectoryDuration;
+    
+    // 更新时间显示
+    const date = new Date(currentTime);
+    document.getElementById('timeDisplay').textContent = date.toLocaleTimeString('zh-CN');
+    
+    // 找到当前时间点的数据
+    const senderPoint = findClosestPoint(trajectoryData.sender, currentTime);
+    const receiverPoint = findClosestPoint(trajectoryData.receiver, currentTime);
+    
+    // 更新无人机位置
+    if (senderPoint && senderMesh) {
+        senderMesh.position.set(senderPoint.x, senderPoint.z, -senderPoint.y);
+        updateDroneInfo('sender', senderPoint);
+        
+        // 添加到轨迹
+        window.senderTrail.push(new THREE.Vector3(senderPoint.x, senderPoint.z, -senderPoint.y));
+        updateTrailLine('sender', window.senderTrail, 0x667eea);
+    }
+    
+    if (receiverPoint && receiverMesh) {
+        receiverMesh.position.set(receiverPoint.x, receiverPoint.z, -receiverPoint.y);
+        updateDroneInfo('receiver', receiverPoint);
+        
+        // 添加到轨迹
+        window.receiverTrail.push(new THREE.Vector3(receiverPoint.x, receiverPoint.z, -receiverPoint.y));
+        updateTrailLine('receiver', window.receiverTrail, 0x764ba2);
+    }
+    
+    // 更新双机状态
+    if (senderPoint && receiverPoint) {
+        const distance = Math.sqrt(
+            Math.pow(senderPoint.x - receiverPoint.x, 2) +
+            Math.pow(senderPoint.y - receiverPoint.y, 2) +
+            Math.pow(senderPoint.z - receiverPoint.z, 2)
+        );
+        document.getElementById('currentDistance').textContent = distance.toFixed(2);
+        
+        // 更新连接线
+        updateConnectionLine(senderPoint, receiverPoint);
+    }
+    
+    // 更新性能指标
+    const metric = findClosestMetric(trajectoryData.metrics, currentTime);
+    if (metric) {
+        document.getElementById('currentDelay').textContent = metric.delay ? metric.delay.toFixed(2) : '--';
+        if (trajectoryData.overall_stats) {
+            document.getElementById('currentPacketLoss').textContent = trajectoryData.overall_stats.packet_loss_rate.toFixed(2);
+        }
+    }
+}
+
+function findClosestPoint(points, targetTime) {
+    if (!points || points.length === 0) return null;
+    
+    let closest = points[0];
+    let minDiff = Math.abs(new Date(closest.timestamp).getTime() - targetTime);
+    
+    for (const point of points) {
+        const diff = Math.abs(new Date(point.timestamp).getTime() - targetTime);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closest = point;
+        }
+    }
+    
+    return closest;
+}
+
+function findClosestMetric(metrics, targetTime) {
+    if (!metrics || metrics.length === 0) return null;
+    
+    let closest = metrics[0];
+    let minDiff = Math.abs(new Date(closest.timestamp).getTime() - targetTime);
+    
+    for (const metric of metrics) {
+        const diff = Math.abs(new Date(metric.timestamp).getTime() - targetTime);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closest = metric;
+        }
+    }
+    
+    return minDiff < 5000 ? closest : null;  // 5秒内的数据才有效
+}
+
+function updateDroneInfo(role, point) {
+    const prefix = role === 'sender' ? 'sender' : 'receiver';
+    document.getElementById(`${prefix}Position`).textContent = `(${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)})`;
+    document.getElementById(`${prefix}Altitude`).textContent = point.z.toFixed(2);
+    
+    // 计算速度（如果有前一个点）
+    // 这里简化处理，实际应该基于时间差计算
+    document.getElementById(`${prefix}Speed`).textContent = '--';
+    
+    // 更新RSSI（如果有数据）
+    const currentTime = new Date(point.timestamp).getTime();
+    const metric = findClosestMetric(trajectoryData.metrics, currentTime);
+    if (metric && metric[`rssi_${role}`]) {
+        document.getElementById(`${prefix}RSSI`).textContent = metric[`rssi_${role}`];
+    } else {
+        document.getElementById(`${prefix}RSSI`).textContent = '--';
+    }
+}
+
+function updateTrailLine(role, trail, color) {
+    if (trail.length < 2) return;
+    
+    const lineKey = role + 'TrailLine';
+    if (window[lineKey]) {
+        scene.remove(window[lineKey]);
+    }
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(trail);
+    const material = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
+    window[lineKey] = new THREE.Line(geometry, material);
+    scene.add(window[lineKey]);
+}
+
+function updateConnectionLine(senderPoint, receiverPoint) {
+    if (window.connectionLine) {
+        scene.remove(window.connectionLine);
+    }
+    
+    const points = [
+        new THREE.Vector3(senderPoint.x, senderPoint.z, -senderPoint.y),
+        new THREE.Vector3(receiverPoint.x, receiverPoint.z, -receiverPoint.y)
+    ];
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ 
+        color: 0xff0000, 
+        opacity: 0.5, 
+        transparent: true,
+        linewidth: 1
+    });
+    window.connectionLine = new THREE.Line(geometry, material);
+    scene.add(window.connectionLine);
+}
+
+function updatePlaybackSpeed(speed) {
+    playbackSpeed = parseFloat(speed);
+    console.log('Playback speed:', playbackSpeed);
+}
+
 function downloadReport() {
-    // 生成并下载分析报告
-    alert('报告下载功能开发中...');
+    const dataset = '{{ dataset_name }}';
+    window.location.href = `/api/download_report/${dataset}`;
 }
 
 // 窗口大小改变时重新调整图表
 $(window).resize(function() {
     if (figuresData) {
-        Object.keys(figuresData).forEach(key => {
-            const element = document.getElementById(key.replace(/_/g, ''));
-            if (element && element.data) {
-                Plotly.Plots.resize(element);
-            }
-        });
+        // 等待一点时间让DOM更新
+        setTimeout(() => {
+            $('.js-plotly-plot').each(function() {
+                Plotly.Plots.resize(this);
+            });
+        }, 100);
     }
 });
 </script>
