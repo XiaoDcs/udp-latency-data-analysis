@@ -603,12 +603,19 @@ if __name__ == '__main__':
     os.makedirs('data', exist_ok=True)
     os.makedirs('uploads', exist_ok=True)
     
+    # 获取端口配置（支持Render部署）
+    port = int(os.environ.get('PORT', 6500))
+    host = '0.0.0.0'
+    
     print("🚁 无人机通信数据分析系统正在启动...")
-    print("📊 系统将在 http://127.0.0.1:6500 启动")
+    print(f"📊 系统将在 http://{host}:{port} 启动")
     print("🌐 请在浏览器中访问上述地址")
     
     # 扫描可用数据集
     scan_available_datasets()
     print(f"📂 发现 {len(available_datasets)} 个数据集")
     
-    app.run(debug=True, host='0.0.0.0', port=6500) 
+    # 根据环境判断是否启用调试模式
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
+    app.run(debug=debug_mode, host=host, port=port) 
