@@ -153,6 +153,9 @@
                                 <button class="btn btn-primary" onclick="event.stopPropagation(); analyzeDataset('{{ dataset.name }}')">
                                     <i class="fas fa-chart-line me-1"></i>开始分析
                                 </button>
+                                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="event.stopPropagation(); forceReanalyze('{{ dataset.name }}')" title="强制重新分析">
+                                    <i class="fas fa-redo me-1"></i>重新分析
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -373,6 +376,51 @@ function analyzeDataset(datasetName) {
             }, 1000);
         }
     }, 800);
+}
+
+function forceReanalyze(datasetName) {
+    if (!confirm(`确定要强制重新分析数据集 "${datasetName}" 吗？\n\n这将清理所有缓存并重新计算所有结果。`)) {
+        return;
+    }
+    
+    // 显示分析进度模态框
+    const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+    modal.show();
+    
+    const progressBar = document.getElementById('analysisProgress');
+    const statusText = document.getElementById('analysisStatus');
+    
+    statusText.textContent = '正在清理缓存并重新分析...';
+    progressBar.style.width = '10%';
+    
+    // 调用强制重新分析API
+    fetch(`/api/force_reanalyze/${datasetName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            progressBar.style.width = '100%';
+            statusText.textContent = '重新分析完成，正在跳转...';
+            
+            setTimeout(() => {
+                modal.hide();
+                // 添加时间戳强制刷新
+                window.location.href = `/dashboard/${datasetName}?force=true&_t=${Date.now()}`;
+            }, 1000);
+        } else {
+            modal.hide();
+            showAlert('danger', `重新分析失败: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('重新分析错误:', error);
+        modal.hide();
+        showAlert('danger', '重新分析失败: 网络错误');
+    });
 }
 
 // 文件拖拽处理

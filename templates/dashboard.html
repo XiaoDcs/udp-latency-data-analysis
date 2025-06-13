@@ -640,8 +640,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="{{ url_for('static', filename='js/three.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/OrbitControls.js') }}"></script>
 
 <script>
 // 全局变量
@@ -656,6 +656,9 @@ let isPlaying = false;
 let currentTimeIndex = 0;
 let playbackSpeed = 1;
 
+// 添加数据版本控制，防止缓存问题
+let dataVersion = Date.now();
+
 // 确保Plotly已加载
 function ensurePlotlyLoaded() {
     return new Promise((resolve, reject) => {
@@ -664,26 +667,38 @@ function ensurePlotlyLoaded() {
             return;
         }
         
-        console.log('Plotly未加载，尝试重新加载...');
+        console.log('等待Plotly加载...');
         
-        // 创建script标签重新加载Plotly
-        const script = document.createElement('script');
-        script.src = 'https://cdn.plot.ly/plotly-2.26.0.min.js';
-        script.onload = () => {
-            console.log('Plotly重新加载成功');
-            resolve();
-        };
-        script.onerror = () => {
-            console.error('Plotly重新加载失败');
-            reject(new Error('Plotly加载失败'));
-        };
-        document.head.appendChild(script);
+        // 等待Plotly加载，最多等待5秒
+        let attempts = 0;
+        const maxAttempts = 50;
+        
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') {
+                console.log('Plotly加载成功');
+                resolve();
+                return;
+            }
+            
+            attempts++;
+            if (attempts < maxAttempts) {
+                setTimeout(checkPlotly, 100);
+            } else {
+                console.error('Plotly加载超时');
+                reject(new Error('Plotly加载超时'));
+            }
+        }
+        
+        checkPlotly();
     });
 }
 
 // 页面加载完成后的初始化
 $(document).ready(function() {
     console.log('页面加载完成，开始初始化...');
+    
+    // 清理可能的旧数据
+    clearOldData();
     
     // 确保Plotly加载后再进行初始化
     ensurePlotlyLoaded()
@@ -696,6 +711,29 @@ $(document).ready(function() {
             showError('图表库加载失败，请刷新页面重试');
         });
 });
+
+// 清理旧数据
+function clearOldData() {
+    figuresData = null;
+    summaryData = null;
+    trajectoryData = null;
+    
+    // 清理全局变量
+    if (window.senderTrail) window.senderTrail = [];
+    if (window.receiverTrail) window.receiverTrail = [];
+    if (window.senderTrailLine) {
+        if (scene) scene.remove(window.senderTrailLine);
+        window.senderTrailLine = null;
+    }
+    if (window.receiverTrailLine) {
+        if (scene) scene.remove(window.receiverTrailLine);
+        window.receiverTrailLine = null;
+    }
+    if (window.connectionLine) {
+        if (scene) scene.remove(window.connectionLine);
+        window.connectionLine = null;
+    }
+}
 
 function showError(message) {
     const errorHtml = `
@@ -716,11 +754,14 @@ function showError(message) {
 function loadData() {
     console.log('开始加载数据...');
     
+    // 添加时间戳防止缓存
+    const timestamp = Date.now();
+    
     // 并行加载所有数据
     Promise.all([
-        loadSummaryData(),
-        loadFiguresData(),
-        loadTrajectoryData()
+        loadSummaryData(timestamp),
+        loadFiguresData(timestamp),
+        loadTrajectoryData(timestamp)
     ]).then(() => {
         console.log('所有数据加载完成');
         initializeVisualization();
@@ -730,8 +771,8 @@ function loadData() {
     });
 }
 
-function loadSummaryData() {
-    return fetch('/api/summary')
+function loadSummaryData(timestamp) {
+    return fetch(`/api/summary?_t=${timestamp}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -746,8 +787,8 @@ function loadSummaryData() {
         });
 }
 
-function loadFiguresData() {
-    return fetch('/api/figures')
+function loadFiguresData(timestamp) {
+    return fetch(`/api/figures?_t=${timestamp}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -760,8 +801,8 @@ function loadFiguresData() {
         });
 }
 
-function loadTrajectoryData() {
-    return fetch('/api/trajectory_data')
+function loadTrajectoryData(timestamp) {
+    return fetch(`/api/trajectory_data?_t=${timestamp}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -822,6 +863,13 @@ function renderAllPlots() {
     };
     
     try {
+        // 清理现有图表
+        $('.js-plotly-plot').each(function() {
+            if (this._fullLayout) {
+                Plotly.purge(this);
+            }
+        });
+        
         if (figuresData.udp_performance) {
             Plotly.newPlot('udpPerformance', figuresData.udp_performance.data, 
                           figuresData.udp_performance.layout, plotConfig);

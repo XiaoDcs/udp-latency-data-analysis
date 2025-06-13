@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, make_response
 import os
 import json
 import glob
@@ -28,6 +28,21 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 current_analyzer = None
 current_visualizer = None
 available_datasets = []
+
+# 添加缓存控制装饰器
+def add_cache_control(response):
+    """添加缓存控制头"""
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    response.headers['Last-Modified'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')
+    response.headers['ETag'] = str(hash(datetime.now().isoformat()))
+    return response
+
+@app.after_request
+def after_request(response):
+    """为所有响应添加缓存控制"""
+    return add_cache_control(response)
 
 def scan_available_datasets():
     """扫描可用的数据集"""
@@ -227,6 +242,10 @@ def analyze_dataset(dataset_name):
     """分析指定数据集"""
     global current_analyzer, current_visualizer
     
+    # 强制清理旧的分析结果
+    current_analyzer = None
+    current_visualizer = None
+    
     # 查找数据集路径
     dataset_path = None
     for dataset in available_datasets:
@@ -238,29 +257,53 @@ def analyze_dataset(dataset_name):
         return jsonify({'error': f'数据集 {dataset_name} 不存在'}), 404
     
     try:
+        print(f"开始分析数据集: {dataset_name}")
+        print(f"数据集路径: {dataset_path}")
+        
         # 创建分析器并运行分析
         current_analyzer = DroneCommAnalyzer(dataset_path)
         current_analyzer.run_full_analysis()
+        
+        print("数据分析完成，开始生成可视化...")
         
         # 创建可视化器并生成图表
         current_visualizer = DroneCommVisualizer(current_analyzer)
         current_visualizer.create_all_plots()
         
-        return redirect(url_for('dashboard', dataset_name=dataset_name))
+        print("可视化生成完成")
+        
+        # 创建响应并添加缓存控制
+        response = make_response(redirect(url_for('dashboard', dataset_name=dataset_name)))
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
         
     except Exception as e:
         print(f"分析错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'分析失败: {str(e)}'}), 500
 
 
 @app.route('/dashboard/<dataset_name>')
 def dashboard(dataset_name):
     """显示分析仪表板"""
-    if current_analyzer is None:
+    # 检查是否需要重新分析
+    force_reanalyze = request.args.get('force', 'false').lower() == 'true'
+    
+    if current_analyzer is None or force_reanalyze:
+        print(f"需要重新分析数据集: {dataset_name}")
         return redirect(url_for('analyze_dataset', dataset_name=dataset_name))
     
-    return render_template('dashboard.html',
-                         dataset_name=dataset_name)
+    # 创建响应并添加缓存控制
+    response = make_response(render_template('dashboard.html', dataset_name=dataset_name))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
 
 
 @app.route('/api/figures')
@@ -269,11 +312,17 @@ def get_figures():
     if current_visualizer is None:
         return jsonify({'error': '尚未进行分析'}), 400
     
-    figures_json = {}
-    for name, fig in current_visualizer.figures.items():
-        figures_json[name] = json.loads(fig.to_json())
-    
-    return jsonify(figures_json)
+    try:
+        figures_json = {}
+        for name, fig in current_visualizer.figures.items():
+            figures_json[name] = json.loads(fig.to_json())
+        
+        print(f"返回图表数据，包含 {len(figures_json)} 个图表")
+        return jsonify(figures_json)
+        
+    except Exception as e:
+        print(f"获取图表数据错误: {str(e)}")
+        return jsonify({'error': f'获取图表数据失败: {str(e)}'}), 500
 
 
 @app.route('/api/summary')
@@ -457,6 +506,49 @@ def delete_dataset(dataset_name):
         return jsonify({'error': f'删除失败: {str(e)}'}), 500
 
 
+@app.route('/api/force_reanalyze/<dataset_name>', methods=['POST'])
+def force_reanalyze(dataset_name):
+    """强制重新分析数据集"""
+    global current_analyzer, current_visualizer
+    
+    try:
+        # 清理当前分析器和可视化器
+        current_analyzer = None
+        current_visualizer = None
+        
+        # 查找数据集路径
+        dataset_path = None
+        for dataset in available_datasets:
+            if dataset['name'] == dataset_name:
+                dataset_path = dataset['path']
+                break
+        
+        if not dataset_path or not os.path.exists(dataset_path):
+            return jsonify({'error': f'数据集 {dataset_name} 不存在'}), 404
+        
+        print(f"强制重新分析数据集: {dataset_name}")
+        
+        # 创建新的分析器并运行分析
+        current_analyzer = DroneCommAnalyzer(dataset_path)
+        current_analyzer.run_full_analysis()
+        
+        # 创建新的可视化器并生成图表
+        current_visualizer = DroneCommVisualizer(current_analyzer)
+        current_visualizer.create_all_plots()
+        
+        return jsonify({
+            'success': True,
+            'message': f'数据集 {dataset_name} 重新分析完成',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"强制重新分析错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'重新分析失败: {str(e)}'}), 500
+
+
 @app.route('/api/clear_cache', methods=['POST'])
 def clear_cache():
     """API端点：清理服务器端缓存"""
@@ -487,7 +579,8 @@ def clear_cache():
         
         return jsonify({
             'success': True,
-            'message': '服务器缓存已清理'
+            'message': '服务器缓存已清理',
+            'timestamp': datetime.now().isoformat()
         })
         
     except Exception as e:
@@ -610,71 +703,95 @@ def get_trajectory_data():
         'metrics': []
     }
     
-    # 获取GPS数据
+    # 计算参考点（所有GPS点的中心）
+    all_lats = []
+    all_lons = []
+    for role in ['sender', 'receiver']:
+        if role in current_analyzer.gps_data and not current_analyzer.gps_data[role].empty:
+            all_lats.extend(current_analyzer.gps_data[role]['latitude'].tolist())
+            all_lons.extend(current_analyzer.gps_data[role]['longitude'].tolist())
+    
+    if not all_lats:
+        return jsonify({'error': 'GPS数据不可用'}), 400
+    
+    ref_lat = sum(all_lats) / len(all_lats)
+    ref_lon = sum(all_lons) / len(all_lons)
+    
+    def latlon_to_meters(lat, lon, ref_lat, ref_lon):
+        """将经纬度转换为相对于参考点的米坐标"""
+        import math
+        
+        # 地球半径（米）
+        R = 6371000
+        
+        # 纬度差转换为米
+        y = (lat - ref_lat) * (math.pi / 180) * R
+        
+        # 经度差转换为米（考虑纬度的影响）
+        x = (lon - ref_lon) * (math.pi / 180) * R * math.cos(math.radians(ref_lat))
+        
+        return x, y
+    
+    # 获取GPS数据并转换坐标
     if 'sender' in current_analyzer.gps_data:
         sender_gps = current_analyzer.gps_data['sender']
         for _, row in sender_gps.iterrows():
+            x, y = latlon_to_meters(row['latitude'], row['longitude'], ref_lat, ref_lon)
             trajectory_data['sender'].append({
-                'x': float(row['local_x']),
-                'y': float(row['local_y']),
-                'z': float(row['local_z']),
+                'x': float(x),
+                'y': float(y),
+                'z': float(row['altitude']),  # 使用绝对高度
                 'timestamp': row['timestamp'].isoformat()
             })
     
     if 'receiver' in current_analyzer.gps_data:
         receiver_gps = current_analyzer.gps_data['receiver']
         for _, row in receiver_gps.iterrows():
+            x, y = latlon_to_meters(row['latitude'], row['longitude'], ref_lat, ref_lon)
             trajectory_data['receiver'].append({
-                'x': float(row['local_x']),
-                'y': float(row['local_y']),
-                'z': float(row['local_z']),
+                'x': float(x),
+                'y': float(y),
+                'z': float(row['altitude']),  # 使用绝对高度
                 'timestamp': row['timestamp'].isoformat()
             })
     
-    # 获取时间对齐的性能指标
-    if 'inter_drone_distance' in current_analyzer.analysis_results:
-        distance_data = current_analyzer.analysis_results['inter_drone_distance']
-        timestamps = distance_data['timestamps']
-        distances = distance_data['distances_3d']
-        
-        # 对每个时间点，尝试获取对应的性能指标
-        for i, ts in enumerate(timestamps):
-            metric = {
-                'timestamp': ts.isoformat(),
-                'distance_3d': round(distances[i], 2),
-                'delay': None,
-                'packet_loss': None,
-                'rssi_sender': None,
-                'rssi_receiver': None
-            }
-            
-            # 尝试匹配UDP延迟数据
-            if 'udp' in current_analyzer.receiver_data:
-                udp_data = current_analyzer.receiver_data['udp']
-                # 找最近的UDP数据点
-                time_diffs = abs(udp_data['recv_timestamp'] - ts)
-                if not time_diffs.empty:
-                    closest_idx = time_diffs.idxmin()
-                    if time_diffs[closest_idx].total_seconds() < 5:  # 5秒内的数据
-                        metric['delay'] = round(udp_data.loc[closest_idx, 'delay'] * 1000, 2)
-            
-            # 尝试匹配NEXFI数据
-            for role in ['sender', 'receiver']:
-                if role in current_analyzer.nexfi_data:
-                    nexfi_data = current_analyzer.nexfi_data[role]
-                    time_diffs = abs(nexfi_data['timestamp'] - ts)
-                    if not time_diffs.empty:
-                        closest_idx = time_diffs.idxmin()
-                        if time_diffs[closest_idx].total_seconds() < 10:  # 10秒内的数据
-                            metric[f'rssi_{role}'] = round(nexfi_data.loc[closest_idx, 'avg_rssi'], 1)
-            
-            trajectory_data['metrics'].append(metric)
+    # 获取性能指标数据
+    if 'udp' in current_analyzer.sender_data and not current_analyzer.sender_data['udp'].empty:
+        udp_data = current_analyzer.sender_data['udp']
+        for _, row in udp_data.iterrows():
+            trajectory_data['metrics'].append({
+                'timestamp': row['timestamp'].isoformat(),
+                'delay': float(row['delay']) if pd.notna(row['delay']) else None,
+                'packet_loss': 0  # 简化处理
+            })
     
-    # 计算总体统计
+    # 添加NEXFI数据到metrics
+    for role in ['sender', 'receiver']:
+        if role in current_analyzer.nexfi_data and not current_analyzer.nexfi_data[role].empty:
+            nexfi_data = current_analyzer.nexfi_data[role]
+            for _, row in nexfi_data.iterrows():
+                # 找到对应时间的metric记录
+                timestamp_str = row['timestamp'].isoformat()
+                for metric in trajectory_data['metrics']:
+                    if metric['timestamp'] == timestamp_str:
+                        metric[f'rssi_{role}'] = float(row['avg_rssi']) if pd.notna(row['avg_rssi']) else None
+                        break
+                else:
+                    # 如果没找到对应的metric记录，创建新的
+                    trajectory_data['metrics'].append({
+                        'timestamp': timestamp_str,
+                        'delay': None,
+                        'packet_loss': 0,
+                        f'rssi_{role}': float(row['avg_rssi']) if pd.notna(row['avg_rssi']) else None
+                    })
+    
+    # 添加总体统计信息
     if 'udp' in current_analyzer.analysis_results:
+        udp_stats = current_analyzer.analysis_results['udp']
         trajectory_data['overall_stats'] = {
-            'packet_loss_rate': current_analyzer.analysis_results['udp']['packet_loss_rate'],
-            'avg_delay': current_analyzer.analysis_results['udp']['delay_stats']['mean']
+            'packet_loss_rate': udp_stats.get('packet_loss_rate', 0),
+            'avg_delay': udp_stats.get('avg_delay', 0),
+            'max_delay': udp_stats.get('max_delay', 0)
         }
     
     return jsonify(trajectory_data)

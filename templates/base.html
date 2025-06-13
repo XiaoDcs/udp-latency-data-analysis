@@ -5,16 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}无人机通信数据分析系统{% endblock %}</title>
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- 添加缓存控制 -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <!-- 强化缓存控制 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta name="cache-control" content="no-cache">
+    
+    <!-- Bootstrap CSS - 本地文件 -->
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    
+    <!-- Font Awesome - 本地文件 -->
+    <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+    
+    <!-- 添加版本号防止缓存 -->
+    <meta name="version" content="{{ range(1000, 9999) | random }}">
     
     <style>
         .navbar-brand {
@@ -138,6 +142,11 @@
                             <i class="fas fa-sync-alt me-1"></i>清理缓存
                         </button>
                     </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn btn-link" onclick="hardRefresh()">
+                            <i class="fas fa-redo me-1"></i>强制刷新
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -166,42 +175,86 @@
         </div>
     </footer>
 
-    <!-- JavaScript加载顺序优化 -->
+    <!-- JavaScript加载顺序优化 - 使用本地文件 -->
     <!-- 1. 首先加载jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
     
     <!-- 2. 然后加载Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     
-    <!-- 3. 最后加载Plotly.js -->
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <!-- 3. 加载Plotly.js - 使用本地文件 -->
+    <script src="{{ url_for('static', filename='js/plotly-2.26.0.min.js') }}"></script>
     
     <!-- 4. 基础功能脚本 -->
     <script>
-        // 清理缓存功能
+        // 强制清理所有缓存
         function clearCache() {
             if (confirm('确定要清理浏览器缓存吗？这将刷新页面。')) {
                 // 清理localStorage
                 localStorage.clear();
                 // 清理sessionStorage
                 sessionStorage.clear();
+                // 清理IndexedDB
+                if ('indexedDB' in window) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    });
+                }
+                // 清理Service Worker缓存
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                        registrations.forEach(registration => {
+                            registration.unregister();
+                        });
+                    });
+                }
                 // 强制刷新页面
                 window.location.reload(true);
             }
         }
         
+        // 硬刷新功能
+        function hardRefresh() {
+            // 添加时间戳强制刷新
+            const url = new URL(window.location);
+            url.searchParams.set('_t', Date.now());
+            window.location.href = url.toString();
+        }
+        
         // 确保Plotly加载完成
         $(document).ready(function() {
-            if (typeof Plotly === 'undefined') {
-                console.error('Plotly.js 未正确加载');
-                // 尝试重新加载Plotly
-                $.getScript('https://cdn.plot.ly/plotly-2.26.0.min.js')
-                    .done(function() {
-                        console.log('Plotly.js 重新加载成功');
-                    })
-                    .fail(function() {
-                        console.error('Plotly.js 重新加载失败');
-                    });
+            // 等待Plotly加载
+            let checkCount = 0;
+            const maxChecks = 50; // 最多检查5秒
+            
+            function checkPlotly() {
+                if (typeof Plotly !== 'undefined') {
+                    console.log('Plotly.js 已准备就绪');
+                    return;
+                }
+                
+                checkCount++;
+                if (checkCount < maxChecks) {
+                    setTimeout(checkPlotly, 100);
+                } else {
+                    console.error('Plotly.js 加载超时');
+                    // 显示错误提示
+                    if (typeof showError === 'function') {
+                        showError('图表库加载失败，请刷新页面重试');
+                    }
+                }
+            }
+            
+            checkPlotly();
+        });
+        
+        // 页面可见性变化时清理缓存
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                // 页面重新可见时，检查是否需要刷新数据
+                console.log('页面重新可见，检查数据新鲜度...');
             }
         });
     </script>
