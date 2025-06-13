@@ -640,71 +640,273 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Three.js -->
-<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-let summaryData = null;
+// 全局变量
 let figuresData = null;
+let summaryData = null;
 let trajectoryData = null;
+
+// Three.js 变量
 let scene, camera, renderer, controls;
 let senderMesh, receiverMesh;
-let trajectoryAnimation = null;
-let currentTimeIndex = 0;
 let isPlaying = false;
+let currentTimeIndex = 0;
 let playbackSpeed = 1;
 
-// 页面加载时获取数据
+// 确保Plotly已加载
+function ensurePlotlyLoaded() {
+    return new Promise((resolve, reject) => {
+        if (typeof Plotly !== 'undefined') {
+            resolve();
+            return;
+        }
+        
+        console.log('Plotly未加载，尝试重新加载...');
+        
+        // 创建script标签重新加载Plotly
+        const script = document.createElement('script');
+        script.src = 'https://cdn.plot.ly/plotly-2.26.0.min.js';
+        script.onload = () => {
+            console.log('Plotly重新加载成功');
+            resolve();
+        };
+        script.onerror = () => {
+            console.error('Plotly重新加载失败');
+            reject(new Error('Plotly加载失败'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// 页面加载完成后的初始化
 $(document).ready(function() {
-    loadAnalysisResults();
-    initThreeJS();
+    console.log('页面加载完成，开始初始化...');
+    
+    // 确保Plotly加载后再进行初始化
+    ensurePlotlyLoaded()
+        .then(() => {
+            console.log('Plotly已准备就绪');
+            loadData();
+        })
+        .catch(error => {
+            console.error('Plotly加载失败:', error);
+            showError('图表库加载失败，请刷新页面重试');
+        });
 });
 
-function loadAnalysisResults() {
-    // 获取摘要数据
-    $.get('/api/summary')
-        .done(function(data) {
+function showError(message) {
+    const errorHtml = `
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i>刷新页面
+            </button>
+        </div>
+    `;
+    
+    // 在所有加载区域显示错误
+    $('#summaryStatsSection').html(errorHtml);
+    $('#summaryCards').html(errorHtml);
+}
+
+function loadData() {
+    console.log('开始加载数据...');
+    
+    // 并行加载所有数据
+    Promise.all([
+        loadSummaryData(),
+        loadFiguresData(),
+        loadTrajectoryData()
+    ]).then(() => {
+        console.log('所有数据加载完成');
+        initializeVisualization();
+    }).catch(error => {
+        console.error('数据加载失败:', error);
+        showError('数据加载失败，请检查网络连接或刷新页面重试');
+    });
+}
+
+function loadSummaryData() {
+    return fetch('/api/summary')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
             summaryData = data;
+            console.log('摘要数据加载成功');
             renderSummaryStats();
             renderSummaryCards();
-        })
-        .fail(function(xhr) {
-            console.error('Failed to load summary:', xhr.responseText);
-            $('#summaryCards').html(`
-                <div class="col-12">
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        加载分析结果失败，请重新分析数据集。
-                    </div>
-                </div>
-            `);
         });
-    
-    // 获取图表数据
-    $.get('/api/figures')
-        .done(function(data) {
+}
+
+function loadFiguresData() {
+    return fetch('/api/figures')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
             figuresData = data;
-            renderAllPlots();
-        })
-        .fail(function() {
-            $('.plot-container .loading').html(`
-                <div class="text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    加载图表失败
-                </div>
-            `);
+            console.log('图表数据加载成功，图表数量:', Object.keys(data).length);
         });
-    
-    // 获取轨迹数据
-    $.get('/api/trajectory_data')
-        .done(function(data) {
+}
+
+function loadTrajectoryData() {
+    return fetch('/api/trajectory_data')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
             trajectoryData = data;
-            setupTrajectoryAnimation();
-        })
-        .fail(function() {
-            console.log('No trajectory data endpoint yet');
+            console.log('轨迹数据加载成功');
         });
+}
+
+function initializeVisualization() {
+    console.log('开始初始化可视化...');
+    
+    // 渲染图表
+    if (figuresData && typeof Plotly !== 'undefined') {
+        renderAllPlots();
+    } else {
+        console.error('无法渲染图表: Plotly未定义或数据未加载');
+    }
+    
+    // 初始化3D场景
+    setTimeout(() => {
+        initThreeJS();
+        if (trajectoryData) {
+            setupTrajectoryAnimation();
+        }
+    }, 500);
+}
+
+function renderAllPlots() {
+    if (!figuresData) {
+        console.error('图表数据未加载');
+        return;
+    }
+    
+    if (typeof Plotly === 'undefined') {
+        console.error('Plotly未定义，无法渲染图表');
+        return;
+    }
+    
+    console.log('开始渲染图表...');
+    
+    // 渲染各个图表，设置响应式配置但保留工具栏
+    const plotConfig = {
+        responsive: true, 
+        displayModeBar: true,  // 显示工具栏
+        displaylogo: false,
+        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],  // 移除不常用的工具
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'drone_analysis_chart',
+            height: 600,
+            width: 800,
+            scale: 1
+        }
+    };
+    
+    try {
+        if (figuresData.udp_performance) {
+            Plotly.newPlot('udpPerformance', figuresData.udp_performance.data, 
+                          figuresData.udp_performance.layout, plotConfig);
+            console.log('UDP性能图表渲染完成');
+        }
+        
+        if (figuresData.nexfi_quality) {
+            Plotly.newPlot('nexfiQuality', figuresData.nexfi_quality.data, 
+                          figuresData.nexfi_quality.layout, plotConfig);
+            console.log('NEXFI质量图表渲染完成');
+        }
+        
+        if (figuresData.altitude_timeline) {
+            Plotly.newPlot('altitudeTimeline', figuresData.altitude_timeline.data, 
+                          figuresData.altitude_timeline.layout, plotConfig);
+            console.log('高度时间线图表渲染完成');
+        }
+        
+        if (figuresData.speed_timeline) {
+            Plotly.newPlot('speedTimeline', figuresData.speed_timeline.data, 
+                          figuresData.speed_timeline.layout, plotConfig);
+            console.log('速度时间线图表渲染完成');
+        }
+        
+        if (figuresData.distance_timeline) {
+            Plotly.newPlot('distanceTimeline', figuresData.distance_timeline.data, 
+                          figuresData.distance_timeline.layout, plotConfig);
+            console.log('距离时间线图表渲染完成');
+        }
+        
+        if (figuresData.distance_statistics) {
+            Plotly.newPlot('distanceStatistics', figuresData.distance_statistics.data, 
+                          figuresData.distance_statistics.layout, plotConfig);
+            console.log('距离统计图表渲染完成');
+        }
+        
+        // 相关性图表
+        renderCorrelationPlots(plotConfig);
+        
+        console.log('所有图表渲染完成');
+        
+    } catch (error) {
+        console.error('图表渲染错误:', error);
+        showError('图表渲染失败: ' + error.message);
+    }
+}
+
+function renderCorrelationPlots(plotConfig) {
+    let correlationHtml = '';
+    if (figuresData.delay_distance_correlation) {
+        correlationHtml += '<div class="plot-container"><div id="delayDistanceCorr"></div></div>';
+    }
+    
+    Object.keys(figuresData).forEach(key => {
+        if (key.includes('rssi_distance_correlation')) {
+            correlationHtml += `<div class="plot-container"><div id="${key}"></div></div>`;
+        }
+    });
+    
+    if (correlationHtml) {
+        $('#correlationPlots').html(correlationHtml);
+        
+        try {
+            if (figuresData.delay_distance_correlation) {
+                Plotly.newPlot('delayDistanceCorr', figuresData.delay_distance_correlation.data, 
+                              figuresData.delay_distance_correlation.layout, plotConfig);
+            }
+            
+            Object.keys(figuresData).forEach(key => {
+                if (key.includes('rssi_distance_correlation')) {
+                    Plotly.newPlot(key, figuresData[key].data, 
+                                  figuresData[key].layout, plotConfig);
+                }
+            });
+        } catch (error) {
+            console.error('相关性图表渲染错误:', error);
+        }
+    } else {
+        $('#correlationPlots').html(`
+            <div class="text-center py-4">
+                <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                <p class="text-muted">暂无相关性分析结果</p>
+            </div>
+        `);
+    }
 }
 
 function renderSummaryStats() {
@@ -1136,91 +1338,6 @@ function renderSummaryCards() {
     $('#summaryCards').html(cardsHtml);
 }
 
-function renderAllPlots() {
-    if (!figuresData) return;
-    
-    // 渲染各个图表，设置响应式配置但保留工具栏
-    const plotConfig = {
-        responsive: true, 
-        displayModeBar: true,  // 显示工具栏
-        displaylogo: false,
-        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],  // 移除不常用的工具
-        toImageButtonOptions: {
-            format: 'png',
-            filename: 'drone_analysis_chart',
-            height: 600,
-            width: 800,
-            scale: 1
-        }
-    };
-    
-    if (figuresData.udp_performance) {
-        Plotly.newPlot('udpPerformance', figuresData.udp_performance.data, 
-                      figuresData.udp_performance.layout, plotConfig);
-    }
-    
-    if (figuresData.nexfi_quality) {
-        Plotly.newPlot('nexfiQuality', figuresData.nexfi_quality.data, 
-                      figuresData.nexfi_quality.layout, plotConfig);
-    }
-    
-    if (figuresData.altitude_timeline) {
-        Plotly.newPlot('altitudeTimeline', figuresData.altitude_timeline.data, 
-                      figuresData.altitude_timeline.layout, plotConfig);
-    }
-    
-    if (figuresData.speed_timeline) {
-        Plotly.newPlot('speedTimeline', figuresData.speed_timeline.data, 
-                      figuresData.speed_timeline.layout, plotConfig);
-    }
-    
-    if (figuresData.distance_timeline) {
-        Plotly.newPlot('distanceTimeline', figuresData.distance_timeline.data, 
-                      figuresData.distance_timeline.layout, plotConfig);
-    }
-    
-    if (figuresData.distance_statistics) {
-        Plotly.newPlot('distanceStatistics', figuresData.distance_statistics.data, 
-                      figuresData.distance_statistics.layout, plotConfig);
-    }
-    
-    // 相关性图表
-    let correlationHtml = '';
-    if (figuresData.delay_distance_correlation) {
-        correlationHtml += '<div class="plot-container"><div id="delayDistanceCorr"></div></div>';
-    }
-    
-    Object.keys(figuresData).forEach(key => {
-        if (key.includes('rssi_distance_correlation')) {
-            correlationHtml += `<div class="plot-container"><div id="${key}"></div></div>`;
-        }
-    });
-    
-    if (correlationHtml) {
-        $('#correlationPlots').html(correlationHtml);
-        
-        if (figuresData.delay_distance_correlation) {
-            Plotly.newPlot('delayDistanceCorr', figuresData.delay_distance_correlation.data, 
-                          figuresData.delay_distance_correlation.layout, plotConfig);
-        }
-        
-        Object.keys(figuresData).forEach(key => {
-            if (key.includes('rssi_distance_correlation')) {
-                Plotly.newPlot(key, figuresData[key].data, 
-                              figuresData[key].layout, plotConfig);
-            }
-        });
-    } else {
-        $('#correlationPlots').html(`
-            <div class="text-center py-4">
-                <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
-                <p class="text-muted">暂无相关性分析结果</p>
-            </div>
-        `);
-    }
-}
-
-// Three.js 3D轨迹回放功能
 function initThreeJS() {
     const container = document.getElementById('trajectoryScene');
     if (!container) {

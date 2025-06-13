@@ -413,6 +413,87 @@ def get_datasets():
     return jsonify(available_datasets)
 
 
+@app.route('/api/delete_dataset/<dataset_name>', methods=['DELETE'])
+def delete_dataset(dataset_name):
+    """API端点：删除指定数据集"""
+    global current_analyzer, current_visualizer
+    
+    try:
+        # 查找数据集路径
+        dataset_path = None
+        dataset_info = None
+        for dataset in available_datasets:
+            if dataset['name'] == dataset_name:
+                dataset_path = dataset['path']
+                dataset_info = dataset
+                break
+        
+        if not dataset_path or not os.path.exists(dataset_path):
+            return jsonify({'error': f'数据集 {dataset_name} 不存在'}), 404
+        
+        # 检查是否为当前正在分析的数据集
+        if current_analyzer and hasattr(current_analyzer, 'dataset_path'):
+            if os.path.abspath(current_analyzer.dataset_path) == os.path.abspath(dataset_path):
+                # 清理当前分析器和可视化器
+                current_analyzer = None
+                current_visualizer = None
+        
+        # 删除数据集目录
+        if os.path.exists(dataset_path):
+            shutil.rmtree(dataset_path)
+            print(f"已删除数据集: {dataset_path}")
+        
+        # 重新扫描数据集
+        scan_available_datasets()
+        
+        return jsonify({
+            'success': True,
+            'message': f'数据集 {dataset_name} 已成功删除',
+            'deleted_dataset': dataset_info
+        })
+        
+    except Exception as e:
+        print(f"删除数据集错误: {str(e)}")
+        return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
+
+@app.route('/api/clear_cache', methods=['POST'])
+def clear_cache():
+    """API端点：清理服务器端缓存"""
+    global current_analyzer, current_visualizer
+    
+    try:
+        # 清理当前分析器和可视化器
+        current_analyzer = None
+        current_visualizer = None
+        
+        # 清理临时文件
+        temp_dirs = ['/tmp', tempfile.gettempdir()]
+        for temp_dir in temp_dirs:
+            if os.path.exists(temp_dir):
+                for item in os.listdir(temp_dir):
+                    if item.startswith('tmp') and 'drone' in item.lower():
+                        try:
+                            item_path = os.path.join(temp_dir, item)
+                            if os.path.isdir(item_path):
+                                shutil.rmtree(item_path)
+                            else:
+                                os.remove(item_path)
+                        except:
+                            pass
+        
+        # 重新扫描数据集
+        scan_available_datasets()
+        
+        return jsonify({
+            'success': True,
+            'message': '服务器缓存已清理'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'清理缓存失败: {str(e)}'}), 500
+
+
 @app.route('/api/download_report/<dataset_name>')
 def download_report(dataset_name):
     """API端点：下载分析报告"""

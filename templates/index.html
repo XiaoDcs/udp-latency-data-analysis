@@ -111,6 +111,13 @@
                 {% for dataset in datasets %}
                 <div class="col-lg-4 col-md-6 mb-4">
                     <div class="card dataset-card" onclick="analyzeDataset('{{ dataset.name }}')">
+                        <!-- 删除按钮 -->
+                        <button class="btn btn-danger btn-sm delete-btn" 
+                                onclick="event.stopPropagation(); deleteDataset('{{ dataset.name }}')"
+                                title="删除数据集">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">{{ dataset.name }}</h5>
                             <div class="d-flex flex-column align-items-end">
@@ -228,6 +235,100 @@ let uploadedDatasetName = null;
 
 function refreshDatasets() {
     location.reload();
+}
+
+function deleteDataset(datasetName) {
+    if (!confirm(`确定要删除数据集 "${datasetName}" 吗？\n\n此操作不可撤销！`)) {
+        return;
+    }
+    
+    // 显示删除进度
+    const deleteBtn = event.target.closest('.delete-btn');
+    const originalContent = deleteBtn.innerHTML;
+    deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    deleteBtn.disabled = true;
+    
+    fetch(`/api/delete_dataset/${datasetName}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 显示成功消息
+            showAlert('success', `数据集 "${datasetName}" 已成功删除`);
+            // 移除卡片动画
+            const card = deleteBtn.closest('.col-lg-4');
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                card.remove();
+                // 如果没有数据集了，刷新页面显示空状态
+                if (document.querySelectorAll('.dataset-card').length === 0) {
+                    location.reload();
+                }
+            }, 500);
+        } else {
+            showAlert('danger', `删除失败: ${data.error}`);
+            deleteBtn.innerHTML = originalContent;
+            deleteBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('删除错误:', error);
+        showAlert('danger', '删除失败: 网络错误');
+        deleteBtn.innerHTML = originalContent;
+        deleteBtn.disabled = false;
+    });
+}
+
+function clearServerCache() {
+    if (!confirm('确定要清理服务器缓存吗？这将清理所有分析结果缓存。')) {
+        return;
+    }
+    
+    fetch('/api/clear_cache', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+        } else {
+            showAlert('danger', `清理失败: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('清理缓存错误:', error);
+        showAlert('danger', '清理失败: 网络错误');
+    });
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // 插入到页面顶部
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // 自动消失
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 
 function analyzeDataset(datasetName) {
