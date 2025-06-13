@@ -10,7 +10,7 @@
     }
     
     .dashboard-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #4facfe;
         color: white;
         padding: 2rem 0;
         margin-bottom: 2rem;
@@ -46,13 +46,13 @@
     }
     
     .nav-tabs .nav-link:hover {
-        color: #667eea;
+        color: #4facfe;
         background-color: #f8f9fa;
     }
     
     .nav-tabs .nav-link.active {
-        border-bottom-color: #667eea;
-        color: #667eea;
+        border-bottom-color: #4facfe;
+        color: #4facfe;
         background-color: transparent;
     }
     
@@ -127,12 +127,12 @@
     
     /* 汇总统计样式 */
     .summary-stats {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #4facfe;
         color: white;
         border-radius: 0.75rem;
         padding: 2.5rem;
         margin-bottom: 2rem;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
     }
     
     .summary-stats h4 {
@@ -303,7 +303,7 @@
     .time-display {
         text-align: center;
         font-weight: 600;
-        color: #667eea;
+        color: #4facfe;
         margin-top: 0.5rem;
     }
     
@@ -332,13 +332,13 @@
     }
     
     .drone-info.sender {
-        background: rgba(102, 126, 234, 0.1);
-        border-left: 4px solid #667eea;
+        background: rgba(79, 172, 254, 0.1);
+        border-left: 4px solid #4facfe;
     }
     
     .drone-info.receiver {
-        background: rgba(118, 75, 162, 0.1);
-        border-left: 4px solid #764ba2;
+        background: rgba(0, 242, 254, 0.1);
+        border-left: 4px solid #00f2fe;
     }
     
     /* 响应式优化 */
@@ -463,40 +463,102 @@
         <!-- 3D轨迹回放标签 -->
         <div class="tab-pane fade show active" id="trajectory" role="tabpanel">
             <div class="row">
-                <div class="col-lg-8">
-                    <div class="trajectory-controls">
-                        <h4><i class="fas fa-play-circle me-2"></i>轨迹回放控制</h4>
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-primary" onclick="playTrajectory()">
-                                <i class="fas fa-play"></i> 播放
-                            </button>
-                            <button class="btn btn-secondary" onclick="pauseTrajectory()">
-                                <i class="fas fa-pause"></i> 暂停
-                            </button>
-                            <button class="btn btn-secondary" onclick="resetTrajectory()">
-                                <i class="fas fa-redo"></i> 重置
-                            </button>
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>3D轨迹回放</h5>
+                            <div>
+                                <button class="btn btn-sm btn-secondary" onclick="toggleSettings()">
+                                    <i class="fas fa-cog"></i> 设置
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="debugTrajectory()">
+                                    <i class="fas fa-bug"></i> 调试
+                                </button>
+                            </div>
                         </div>
-                        <div class="mt-3">
-                            <label for="timeSlider" class="form-label">时间轴</label>
-                            <input type="range" class="form-range time-slider" id="timeSlider" 
-                                   min="0" max="100" value="0" oninput="updateTrajectoryTime(this.value)">
-                            <div class="time-display" id="timeDisplay">00:00:00</div>
-                        </div>
-                        <div class="mt-3">
-                            <label for="speedControl" class="form-label">播放速度</label>
-                            <select class="form-select" id="speedControl" onchange="updatePlaybackSpeed(this.value)">
-                                <option value="0.5">0.5x</option>
-                                <option value="1" selected>1x</option>
-                                <option value="2">2x</option>
-                                <option value="5">5x</option>
-                                <option value="10">10x</option>
-                            </select>
+                        <div class="card-body">
+                            <!-- 设置面板 -->
+                            <div id="settingsPanel" class="alert alert-light" style="display: none;">
+                                <h6><i class="fas fa-cog"></i> 数据匹配设置</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="udpMatchTime">UDP延迟匹配时间 (秒):</label>
+                                        <input type="number" id="udpMatchTime" class="form-control form-control-sm" value="5" min="1" max="60">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="nexfiMatchTime">NEXFI数据匹配时间 (秒):</label>
+                                        <input type="number" id="nexfiMatchTime" class="form-control form-control-sm" value="10" min="1" max="60">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="gpsMatchTime">GPS数据匹配时间 (秒):</label>
+                                        <input type="number" id="gpsMatchTime" class="form-control form-control-sm" value="2" min="1" max="30">
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <label for="trajectoryLineType">轨迹线类型:</label>
+                                        <select id="trajectoryLineType" class="form-control form-control-sm">
+                                            <option value="tube">管状轨迹 (推荐)</option>
+                                            <option value="line">基本线条</option>
+                                            <option value="points">点状轨迹</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="trajectoryOpacity">轨迹透明度:</label>
+                                        <input type="range" id="trajectoryOpacity" class="form-control-range" min="0.1" max="1" step="0.1" value="0.8">
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-primary mt-2" onclick="applySettings()">应用设置</button>
+                            </div>
+                            
+                            <div id="trajectoryScene" style="width: 100%; height: 500px; border: 1px solid #ddd;"></div>
+                            <!-- 调试信息 -->
+                            <div id="debugInfo" class="mt-2" style="display: none;">
+                                <small class="text-muted">
+                                    <div id="debugText"></div>
+                                </small>
+                            </div>
                         </div>
                     </div>
-                    <div id="trajectoryScene"></div>
                 </div>
                 <div class="col-lg-4">
+                    <!-- 轨迹控制面板 -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5><i class="fas fa-play-circle me-2"></i>轨迹回放控制</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="btn-group d-grid gap-2" role="group">
+                                <button class="btn btn-primary" onclick="playTrajectory()">
+                                    <i class="fas fa-play"></i> 播放
+                                </button>
+                                <button class="btn btn-secondary" onclick="pauseTrajectory()">
+                                    <i class="fas fa-pause"></i> 暂停
+                                </button>
+                                <button class="btn btn-secondary" onclick="resetTrajectory()">
+                                    <i class="fas fa-redo"></i> 重置
+                                </button>
+                            </div>
+                            <div class="mt-3">
+                                <label for="timeSlider" class="form-label">时间轴</label>
+                                <input type="range" class="form-range time-slider" id="timeSlider" 
+                                       min="0" max="100" value="0" oninput="updateTrajectoryTime(this.value)">
+                                <div class="time-display" id="timeDisplay">00:00:00</div>
+                            </div>
+                            <div class="mt-3">
+                                <label for="speedControl" class="form-label">播放速度</label>
+                                <select class="form-select" id="speedControl" onchange="updatePlaybackSpeed(this.value)">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="1" selected>1x</option>
+                                    <option value="2">2x</option>
+                                    <option value="5">5x</option>
+                                    <option value="10">10x</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 实时数据面板 -->
                     <div class="realtime-data-panel">
                         <h4><i class="fas fa-info-circle me-2"></i>实时数据</h4>
                         <div class="drone-info sender">
@@ -658,6 +720,15 @@ let playbackSpeed = 1;
 
 // 添加数据版本控制，防止缓存问题
 let dataVersion = Date.now();
+
+// 添加设置和调试相关的全局变量
+let trajectorySettings = {
+    udpMatchTime: 5,
+    nexfiMatchTime: 10,
+    gpsMatchTime: 2,
+    lineType: 'tube',
+    opacity: 0.8
+};
 
 // 确保Plotly已加载
 function ensurePlotlyLoaded() {
@@ -826,10 +897,20 @@ function initializeVisualization() {
     }
     
     // 初始化3D场景
+    console.log('准备初始化3D场景...');
     setTimeout(() => {
         initThreeJS();
+        
+        // 确保轨迹数据加载完成后再设置动画
         if (trajectoryData) {
-            setupTrajectoryAnimation();
+            console.log('轨迹数据可用，设置动画...');
+            setTimeout(() => {
+                setupTrajectoryAnimation();
+                // 初始显示第一帧
+                updateTrajectoryTime(0);
+            }, 1000);
+        } else {
+            console.warn('轨迹数据未加载');
         }
     }, 500);
 }
@@ -1401,6 +1482,16 @@ function initThreeJS() {
     }
     
     try {
+        // 清理现有场景（如果存在）
+        if (scene) {
+            while(scene.children.length > 0){ 
+                scene.remove(scene.children[0]); 
+            }
+        }
+        if (renderer) {
+            container.removeChild(renderer.domElement);
+        }
+        
         // 创建场景
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf0f0f0);
@@ -1419,6 +1510,7 @@ function initThreeJS() {
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
         
         // 检查OrbitControls是否可用
@@ -1426,6 +1518,8 @@ function initThreeJS() {
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 500;
         } else {
             console.warn('OrbitControls未加载，使用基本相机控制');
         }
@@ -1437,6 +1531,8 @@ function initThreeJS() {
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
         directionalLight.position.set(50, 100, 50);
         directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
         scene.add(directionalLight);
         
         // 添加地面网格
@@ -1451,22 +1547,25 @@ function initThreeJS() {
         const droneGeometry = new THREE.ConeGeometry(2, 4, 4);
         
         // 发送方无人机（蓝色）
-        const senderMaterial = new THREE.MeshPhongMaterial({ color: 0x667eea });
+        const senderMaterial = new THREE.MeshPhongMaterial({ color: 0x4facfe });
         senderMesh = new THREE.Mesh(droneGeometry, senderMaterial);
         senderMesh.castShadow = true;
         senderMesh.rotation.x = Math.PI;  // 让锥体尖端朝下
         scene.add(senderMesh);
         
-        // 接收方无人机（紫色）
-        const receiverMaterial = new THREE.MeshPhongMaterial({ color: 0x764ba2 });
+        // 接收方无人机（青色）
+        const receiverMaterial = new THREE.MeshPhongMaterial({ color: 0x00f2fe });
         receiverMesh = new THREE.Mesh(droneGeometry, receiverMaterial);
         receiverMesh.castShadow = true;
         receiverMesh.rotation.x = Math.PI;  // 让锥体尖端朝下
         scene.add(receiverMesh);
         
-        // 添加轨迹线
+        // 初始化轨迹线数组
         window.senderTrail = [];
         window.receiverTrail = [];
+        window.senderTrailLine = null;
+        window.receiverTrailLine = null;
+        window.connectionLine = null;
         
         // 渲染循环
         function animate() {
@@ -1484,6 +1583,12 @@ function initThreeJS() {
         });
         
         console.log('Three.js 初始化成功');
+        
+        // 初始化完成后，如果有轨迹数据，立即显示
+        if (trajectoryData && trajectoryData.sender && trajectoryData.sender.length > 0) {
+            console.log('Three.js初始化完成，开始设置轨迹动画');
+            setupTrajectoryAnimation();
+        }
         
     } catch (error) {
         console.error('Three.js 初始化失败:', error);
@@ -1564,17 +1669,27 @@ function resetTrajectory() {
     isPlaying = false;
     currentTimeIndex = 0;
     document.getElementById('timeSlider').value = 0;
-    updateTrajectoryTime(0);
     
     // 清除轨迹线
     if (window.senderTrailLine) {
         scene.remove(window.senderTrailLine);
+        window.senderTrailLine = null;
     }
     if (window.receiverTrailLine) {
         scene.remove(window.receiverTrailLine);
+        window.receiverTrailLine = null;
     }
+    if (window.connectionLine) {
+        scene.remove(window.connectionLine);
+        window.connectionLine = null;
+    }
+    
+    // 重置轨迹数组
     window.senderTrail = [];
     window.receiverTrail = [];
+    
+    // 重置到初始状态
+    updateTrajectoryTime(0);
 }
 
 function updateTrajectoryTime(value) {
@@ -1591,23 +1706,38 @@ function updateTrajectoryTime(value) {
     const senderPoint = findClosestPoint(trajectoryData.sender, currentTime);
     const receiverPoint = findClosestPoint(trajectoryData.receiver, currentTime);
     
+    // 重新构建到当前时间点的轨迹
+    window.senderTrail = [];
+    window.receiverTrail = [];
+    
+    // 添加到当前时间点的所有轨迹点
+    for (const point of trajectoryData.sender) {
+        const pointTime = new Date(point.timestamp).getTime();
+        if (pointTime <= currentTime) {
+            window.senderTrail.push(new THREE.Vector3(point.x, point.z, -point.y));
+        }
+    }
+    
+    for (const point of trajectoryData.receiver) {
+        const pointTime = new Date(point.timestamp).getTime();
+        if (pointTime <= currentTime) {
+            window.receiverTrail.push(new THREE.Vector3(point.x, point.z, -point.y));
+        }
+    }
+    
+    // 更新轨迹线
+    updateTrailLine('sender', window.senderTrail, 0x4facfe);
+    updateTrailLine('receiver', window.receiverTrail, 0x00f2fe);
+    
     // 更新无人机位置
     if (senderPoint && senderMesh) {
         senderMesh.position.set(senderPoint.x, senderPoint.z, -senderPoint.y);
-        updateDroneInfo('sender', senderPoint);
-        
-        // 添加到轨迹
-        window.senderTrail.push(new THREE.Vector3(senderPoint.x, senderPoint.z, -senderPoint.y));
-        updateTrailLine('sender', window.senderTrail, 0x667eea);
+        updateDroneInfo('sender', senderPoint, trajectoryData.sender);
     }
     
     if (receiverPoint && receiverMesh) {
         receiverMesh.position.set(receiverPoint.x, receiverPoint.z, -receiverPoint.y);
-        updateDroneInfo('receiver', receiverPoint);
-        
-        // 添加到轨迹
-        window.receiverTrail.push(new THREE.Vector3(receiverPoint.x, receiverPoint.z, -receiverPoint.y));
-        updateTrailLine('receiver', window.receiverTrail, 0x764ba2);
+        updateDroneInfo('receiver', receiverPoint, trajectoryData.receiver);
     }
     
     // 更新双机状态
@@ -1625,11 +1755,28 @@ function updateTrajectoryTime(value) {
     
     // 更新性能指标
     const metric = findClosestMetric(trajectoryData.metrics, currentTime);
-    if (metric) {
-        document.getElementById('currentDelay').textContent = metric.delay ? metric.delay.toFixed(2) : '--';
-        if (trajectoryData.overall_stats) {
-            document.getElementById('currentPacketLoss').textContent = trajectoryData.overall_stats.packet_loss_rate.toFixed(2);
+    if (metric && metric.delay !== null && metric.delay !== undefined) {
+        const delayMs = typeof metric.delay === 'number' ? metric.delay : parseFloat(metric.delay);
+        if (!isNaN(delayMs)) {
+            document.getElementById('currentDelay').textContent = delayMs.toFixed(2);
+        } else {
+            document.getElementById('currentDelay').textContent = '--';
         }
+    } else {
+        // 如果当前时间点没有精确匹配，尝试找最近的有效延迟数据
+        const nearestDelay = findNearestValidDelay(trajectoryData.metrics, currentTime);
+        if (nearestDelay !== null) {
+            document.getElementById('currentDelay').textContent = nearestDelay.toFixed(2);
+        } else {
+            document.getElementById('currentDelay').textContent = '--';
+        }
+    }
+    
+    // 更新丢包率
+    if (trajectoryData.overall_stats && trajectoryData.overall_stats.packet_loss_rate !== undefined) {
+        document.getElementById('currentPacketLoss').textContent = trajectoryData.overall_stats.packet_loss_rate.toFixed(2);
+    } else {
+        document.getElementById('currentPacketLoss').textContent = '--';
     }
 }
 
@@ -1653,51 +1800,193 @@ function findClosestPoint(points, targetTime) {
 function findClosestMetric(metrics, targetTime) {
     if (!metrics || metrics.length === 0) return null;
     
-    let closest = metrics[0];
-    let minDiff = Math.abs(new Date(closest.timestamp).getTime() - targetTime);
+    let closest = null;
+    let minDiff = Infinity;
     
     for (const metric of metrics) {
-        const diff = Math.abs(new Date(metric.timestamp).getTime() - targetTime);
+        const metricTime = new Date(metric.timestamp).getTime();
+        const diff = Math.abs(metricTime - targetTime);
         if (diff < minDiff) {
             minDiff = diff;
             closest = metric;
         }
     }
     
-    return minDiff < 5000 ? closest : null;  // 5秒内的数据才有效
+    // 使用设置中的UDP匹配时间
+    const matchTimeMs = trajectorySettings.udpMatchTime * 1000;
+    return minDiff < matchTimeMs ? closest : null;
 }
 
-function updateDroneInfo(role, point) {
+function findNearestValidDelay(metrics, targetTime) {
+    if (!metrics || metrics.length === 0) return null;
+    
+    let nearestDelay = null;
+    let minDiff = Infinity;
+    
+    for (const metric of metrics) {
+        if (metric.delay !== null && metric.delay !== undefined && !isNaN(metric.delay)) {
+            const metricTime = new Date(metric.timestamp).getTime();
+            const diff = Math.abs(metricTime - targetTime);
+            // 使用设置中的UDP匹配时间，但允许更大的回退范围
+            const fallbackTimeMs = trajectorySettings.udpMatchTime * 3 * 1000;
+            if (diff < minDiff && diff < fallbackTimeMs) {
+                minDiff = diff;
+                nearestDelay = typeof metric.delay === 'number' ? metric.delay : parseFloat(metric.delay);
+            }
+        }
+    }
+    
+    return nearestDelay;
+}
+
+function updateDroneInfo(role, point, allPoints) {
     const prefix = role === 'sender' ? 'sender' : 'receiver';
     document.getElementById(`${prefix}Position`).textContent = `(${point.x.toFixed(1)}, ${point.y.toFixed(1)}, ${point.z.toFixed(1)})`;
     document.getElementById(`${prefix}Altitude`).textContent = point.z.toFixed(2);
     
-    // 计算速度（如果有前一个点）
-    // 这里简化处理，实际应该基于时间差计算
-    document.getElementById(`${prefix}Speed`).textContent = '--';
-    
-    // 更新RSSI（如果有数据）
+    // 计算速度（基于前一个点）
     const currentTime = new Date(point.timestamp).getTime();
-    const metric = findClosestMetric(trajectoryData.metrics, currentTime);
-    if (metric && metric[`rssi_${role}`]) {
-        document.getElementById(`${prefix}RSSI`).textContent = metric[`rssi_${role}`];
+    let speed = 0;
+    
+    // 找到前一个时间点
+    let prevPoint = null;
+    for (let i = 0; i < allPoints.length; i++) {
+        const p = allPoints[i];
+        const pTime = new Date(p.timestamp).getTime();
+        if (pTime < currentTime) {
+            prevPoint = p;
+        } else {
+            break;
+        }
+    }
+    
+    if (prevPoint) {
+        const prevTime = new Date(prevPoint.timestamp).getTime();
+        const timeDiff = (currentTime - prevTime) / 1000; // 转换为秒
+        
+        if (timeDiff > 0) {
+            const distance = Math.sqrt(
+                Math.pow(point.x - prevPoint.x, 2) +
+                Math.pow(point.y - prevPoint.y, 2) +
+                Math.pow(point.z - prevPoint.z, 2)
+            );
+            speed = distance / timeDiff; // m/s
+        }
+    }
+    
+    document.getElementById(`${prefix}Speed`).textContent = speed > 0 ? speed.toFixed(2) : '--';
+    
+    // 尝试从summaryData获取NEXFI数据
+    if (summaryData && summaryData.nexfi && summaryData.nexfi[role]) {
+        const nexfiData = summaryData.nexfi[role];
+        document.getElementById(`${prefix}RSSI`).textContent = nexfiData.avg_rssi;
     } else {
-        document.getElementById(`${prefix}RSSI`).textContent = '--';
+        // 备用：从trajectory数据中查找RSSI
+        const currentTime = new Date(point.timestamp).getTime();
+        const metric = findClosestMetric(trajectoryData.metrics, currentTime);
+        if (metric && metric[`rssi_${role}`]) {
+            document.getElementById(`${prefix}RSSI`).textContent = metric[`rssi_${role}`];
+        } else {
+            document.getElementById(`${prefix}RSSI`).textContent = summaryData && summaryData.nexfi && summaryData.nexfi[role] ? summaryData.nexfi[role].avg_rssi : '--';
+        }
     }
 }
 
 function updateTrailLine(role, trail, color) {
-    if (trail.length < 2) return;
-    
-    const lineKey = role + 'TrailLine';
-    if (window[lineKey]) {
-        scene.remove(window[lineKey]);
+    if (!scene) {
+        console.error('Scene未初始化，无法更新轨迹线');
+        return;
     }
     
-    const geometry = new THREE.BufferGeometry().setFromPoints(trail);
-    const material = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
-    window[lineKey] = new THREE.Line(geometry, material);
-    scene.add(window[lineKey]);
+    const lineKey = role + 'TrailLine';
+    
+    // 移除现有轨迹线
+    if (window[lineKey]) {
+        scene.remove(window[lineKey]);
+        window[lineKey] = null;
+    }
+    
+    if (trail.length < 2 && trajectorySettings.lineType !== 'points') {
+        console.log(`${role}轨迹点不足2个，跳过轨迹线创建`);
+        return;
+    }
+    
+    try {
+        let object = null;
+        
+        if (trajectorySettings.lineType === 'tube' && trail.length >= 2) {
+            // 管状轨迹
+            try {
+                const curve = new THREE.CatmullRomCurve3(trail);
+                const tubeGeometry = new THREE.TubeGeometry(curve, trail.length * 2, 0.5, 8, false);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: color, 
+                    transparent: true,
+                    opacity: trajectorySettings.opacity
+                });
+                object = new THREE.Mesh(tubeGeometry, material);
+                console.log(`${role}轨迹线已创建（管状），包含${trail.length}个点`);
+            } catch (tubeError) {
+                console.warn(`管状轨迹创建失败，回退到基本线条:`, tubeError);
+                // 回退到基本线条
+                const geometry = new THREE.BufferGeometry().setFromPoints(trail);
+                const material = new THREE.LineBasicMaterial({ 
+                    color: color, 
+                    transparent: true,
+                    opacity: trajectorySettings.opacity
+                });
+                object = new THREE.Line(geometry, material);
+                console.log(`${role}轨迹线已创建（基本回退），包含${trail.length}个点`);
+            }
+        } else if (trajectorySettings.lineType === 'line' && trail.length >= 2) {
+            // 基本线条
+            const geometry = new THREE.BufferGeometry().setFromPoints(trail);
+            const material = new THREE.LineBasicMaterial({ 
+                color: color, 
+                transparent: true,
+                opacity: trajectorySettings.opacity
+            });
+            object = new THREE.Line(geometry, material);
+            console.log(`${role}轨迹线已创建（基本），包含${trail.length}个点`);
+        } else if (trajectorySettings.lineType === 'points') {
+            // 点状轨迹
+            const geometry = new THREE.BufferGeometry().setFromPoints(trail);
+            const material = new THREE.PointsMaterial({ 
+                color: color, 
+                size: 2,
+                transparent: true,
+                opacity: trajectorySettings.opacity
+            });
+            object = new THREE.Points(geometry, material);
+            console.log(`${role}轨迹线已创建（点状），包含${trail.length}个点`);
+        }
+        
+        if (object) {
+            window[lineKey] = object;
+            scene.add(object);
+        }
+        
+    } catch (error) {
+        console.error(`创建${role}轨迹线完全失败:`, error);
+        
+        // 最后的回退：简单点
+        if (trail.length > 0) {
+            try {
+                const geometry = new THREE.BufferGeometry().setFromPoints(trail);
+                const material = new THREE.PointsMaterial({ 
+                    color: color, 
+                    size: 3,
+                    transparent: true,
+                    opacity: trajectorySettings.opacity
+                });
+                window[lineKey] = new THREE.Points(geometry, material);
+                scene.add(window[lineKey]);
+                console.log(`${role}轨迹线已创建（紧急回退点状），包含${trail.length}个点`);
+            } catch (pointError) {
+                console.error(`紧急回退也失败:`, pointError);
+            }
+        }
+    }
 }
 
 function updateConnectionLine(senderPoint, receiverPoint) {
@@ -1742,5 +2031,60 @@ $(window).resize(function() {
         }, 100);
     }
 });
+
+function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function debugTrajectory() {
+    const debugInfo = document.getElementById('debugInfo');
+    const debugText = document.getElementById('debugText');
+    
+    if (debugInfo.style.display === 'none') {
+        debugInfo.style.display = 'block';
+        
+        let debugStr = '<strong>调试信息:</strong><br>';
+        debugStr += `Three.js版本: ${THREE ? THREE.REVISION : '未加载'}<br>`;
+        debugStr += `WebGL支持: ${renderer ? renderer.capabilities.isWebGL2 : '未知'}<br>`;
+        debugStr += `场景对象数: ${scene ? scene.children.length : '未知'}<br>`;
+        debugStr += `轨迹数据状态: ${trajectoryData ? '已加载' : '未加载'}<br>`;
+        
+        if (trajectoryData) {
+            debugStr += `发送方轨迹点: ${trajectoryData.sender.length}<br>`;
+            debugStr += `接收方轨迹点: ${trajectoryData.receiver.length}<br>`;
+            debugStr += `延迟数据点: ${trajectoryData.metrics.length}<br>`;
+            debugStr += `当前时间索引: ${currentTimeIndex}<br>`;
+        }
+        
+        if (window.senderTrail) {
+            debugStr += `发送方轨迹线点数: ${window.senderTrail.length}<br>`;
+        }
+        if (window.receiverTrail) {
+            debugStr += `接收方轨迹线点数: ${window.receiverTrail.length}<br>`;
+        }
+        
+        debugText.innerHTML = debugStr;
+    } else {
+        debugInfo.style.display = 'none';
+    }
+}
+
+function applySettings() {
+    trajectorySettings.udpMatchTime = parseInt(document.getElementById('udpMatchTime').value);
+    trajectorySettings.nexfiMatchTime = parseInt(document.getElementById('nexfiMatchTime').value);
+    trajectorySettings.gpsMatchTime = parseInt(document.getElementById('gpsMatchTime').value);
+    trajectorySettings.lineType = document.getElementById('trajectoryLineType').value;
+    trajectorySettings.opacity = parseFloat(document.getElementById('trajectoryOpacity').value);
+    
+    console.log('应用新设置:', trajectorySettings);
+    
+    // 重新绘制轨迹
+    if (trajectoryData) {
+        updateTrajectoryTime(currentTimeIndex);
+    }
+    
+    alert('设置已应用！');
+}
 </script>
 {% endblock %} 

@@ -13,6 +13,7 @@ import tempfile
 import pandas as pd
 import shutil
 from werkzeug.utils import secure_filename
+import math
 
 # 设置环境变量（用于生产部署）
 os.environ.setdefault('FLASK_ENV', 'production')
@@ -696,105 +697,267 @@ def get_trajectory_data():
     if current_analyzer is None:
         return jsonify({'error': '尚未进行分析'}), 400
     
-    trajectory_data = {
-        'sender': [],
-        'receiver': [],
-        'timestamps': [],
-        'metrics': []
-    }
-    
-    # 计算参考点（所有GPS点的中心）
-    all_lats = []
-    all_lons = []
-    for role in ['sender', 'receiver']:
-        if role in current_analyzer.gps_data and not current_analyzer.gps_data[role].empty:
-            all_lats.extend(current_analyzer.gps_data[role]['latitude'].tolist())
-            all_lons.extend(current_analyzer.gps_data[role]['longitude'].tolist())
-    
-    if not all_lats:
-        return jsonify({'error': 'GPS数据不可用'}), 400
-    
-    ref_lat = sum(all_lats) / len(all_lats)
-    ref_lon = sum(all_lons) / len(all_lons)
-    
-    def latlon_to_meters(lat, lon, ref_lat, ref_lon):
-        """将经纬度转换为相对于参考点的米坐标"""
-        import math
+    try:
+        # 添加详细的调试信息
+        print("=== Trajectory Data API Debug ===")
+        print(f"current_analyzer存在: {current_analyzer is not None}")
         
-        # 地球半径（米）
-        R = 6371000
+        if current_analyzer:
+            print(f"current_analyzer类型: {type(current_analyzer)}")
+            print(f"hasattr gps_data: {hasattr(current_analyzer, 'gps_data')}")
+            print(f"hasattr sender_data: {hasattr(current_analyzer, 'sender_data')}")
+            print(f"hasattr analysis_results: {hasattr(current_analyzer, 'analysis_results')}")
+            
+            if hasattr(current_analyzer, 'gps_data'):
+                print(f"gps_data类型: {type(current_analyzer.gps_data)}")
+                print(f"gps_data是否为None: {current_analyzer.gps_data is None}")
+                if current_analyzer.gps_data:
+                    print(f"gps_data键: {list(current_analyzer.gps_data.keys()) if isinstance(current_analyzer.gps_data, dict) else 'Not a dict'}")
+                    for role in ['sender', 'receiver']:
+                        if role in current_analyzer.gps_data:
+                            df = current_analyzer.gps_data[role]
+                            print(f"gps_data[{role}]形状: {df.shape if hasattr(df, 'shape') else 'No shape'}")
+                            if hasattr(df, 'columns'):
+                                print(f"gps_data[{role}]列: {list(df.columns)}")
+                            if hasattr(df, 'empty'):
+                                print(f"gps_data[{role}]是否为空: {df.empty}")
+            
+            if hasattr(current_analyzer, 'sender_data'):
+                print(f"sender_data类型: {type(current_analyzer.sender_data)}")
+                if isinstance(current_analyzer.sender_data, dict):
+                    print(f"sender_data键: {list(current_analyzer.sender_data.keys())}")
+                    if 'udp' in current_analyzer.sender_data:
+                        udp_df = current_analyzer.sender_data['udp']
+                        print(f"sender_data['udp']形状: {udp_df.shape if hasattr(udp_df, 'shape') else 'No shape'}")
         
-        # 纬度差转换为米
-        y = (lat - ref_lat) * (math.pi / 180) * R
-        
-        # 经度差转换为米（考虑纬度的影响）
-        x = (lon - ref_lon) * (math.pi / 180) * R * math.cos(math.radians(ref_lat))
-        
-        return x, y
-    
-    # 获取GPS数据并转换坐标
-    if 'sender' in current_analyzer.gps_data:
-        sender_gps = current_analyzer.gps_data['sender']
-        for _, row in sender_gps.iterrows():
-            x, y = latlon_to_meters(row['latitude'], row['longitude'], ref_lat, ref_lon)
-            trajectory_data['sender'].append({
-                'x': float(x),
-                'y': float(y),
-                'z': float(row['altitude']),  # 使用绝对高度
-                'timestamp': row['timestamp'].isoformat()
-            })
-    
-    if 'receiver' in current_analyzer.gps_data:
-        receiver_gps = current_analyzer.gps_data['receiver']
-        for _, row in receiver_gps.iterrows():
-            x, y = latlon_to_meters(row['latitude'], row['longitude'], ref_lat, ref_lon)
-            trajectory_data['receiver'].append({
-                'x': float(x),
-                'y': float(y),
-                'z': float(row['altitude']),  # 使用绝对高度
-                'timestamp': row['timestamp'].isoformat()
-            })
-    
-    # 获取性能指标数据
-    if 'udp' in current_analyzer.sender_data and not current_analyzer.sender_data['udp'].empty:
-        udp_data = current_analyzer.sender_data['udp']
-        for _, row in udp_data.iterrows():
-            trajectory_data['metrics'].append({
-                'timestamp': row['timestamp'].isoformat(),
-                'delay': float(row['delay']) if pd.notna(row['delay']) else None,
-                'packet_loss': 0  # 简化处理
-            })
-    
-    # 添加NEXFI数据到metrics
-    for role in ['sender', 'receiver']:
-        if role in current_analyzer.nexfi_data and not current_analyzer.nexfi_data[role].empty:
-            nexfi_data = current_analyzer.nexfi_data[role]
-            for _, row in nexfi_data.iterrows():
-                # 找到对应时间的metric记录
-                timestamp_str = row['timestamp'].isoformat()
-                for metric in trajectory_data['metrics']:
-                    if metric['timestamp'] == timestamp_str:
-                        metric[f'rssi_{role}'] = float(row['avg_rssi']) if pd.notna(row['avg_rssi']) else None
-                        break
-                else:
-                    # 如果没找到对应的metric记录，创建新的
-                    trajectory_data['metrics'].append({
-                        'timestamp': timestamp_str,
-                        'delay': None,
-                        'packet_loss': 0,
-                        f'rssi_{role}': float(row['avg_rssi']) if pd.notna(row['avg_rssi']) else None
-                    })
-    
-    # 添加总体统计信息
-    if 'udp' in current_analyzer.analysis_results:
-        udp_stats = current_analyzer.analysis_results['udp']
-        trajectory_data['overall_stats'] = {
-            'packet_loss_rate': udp_stats.get('packet_loss_rate', 0),
-            'avg_delay': udp_stats.get('avg_delay', 0),
-            'max_delay': udp_stats.get('max_delay', 0)
+        trajectory_data = {
+            'sender': [],
+            'receiver': [],
+            'timestamps': [],
+            'metrics': [],
+            'overall_stats': {}
         }
-    
-    return jsonify(trajectory_data)
+        
+        # 标记是否找到了真实数据
+        has_real_data = False
+        
+        # 安全的GPS数据处理
+        try:
+            if (hasattr(current_analyzer, 'gps_data') and 
+                current_analyzer.gps_data and 
+                isinstance(current_analyzer.gps_data, dict)):
+                
+                print(f"GPS数据字典键: {list(current_analyzer.gps_data.keys())}")
+                
+                # 收集所有GPS点用于计算参考点
+                all_lats = []
+                all_lons = []
+                
+                for role in ['sender', 'receiver']:
+                    if role in current_analyzer.gps_data:
+                        gps_df = current_analyzer.gps_data[role]
+                        print(f"GPS数据[{role}]: 类型={type(gps_df)}, 形状={gps_df.shape if hasattr(gps_df, 'shape') else '无形状'}")
+                        
+                        if (gps_df is not None and 
+                            hasattr(gps_df, 'empty') and not gps_df.empty and
+                            'latitude' in gps_df.columns and 'longitude' in gps_df.columns):
+                            
+                            # 过滤掉nan值
+                            valid_rows = gps_df.dropna(subset=['latitude', 'longitude'])
+                            print(f"GPS数据[{role}]: 有效行数={len(valid_rows)}/{len(gps_df)}")
+                            
+                            if len(valid_rows) > 0:
+                                all_lats.extend(valid_rows['latitude'].tolist())
+                                all_lons.extend(valid_rows['longitude'].tolist())
+                
+                print(f"收集到的坐标点数: {len(all_lats)} 个")
+                
+                if all_lats and all_lons:
+                    ref_lat = sum(all_lats) / len(all_lats)
+                    ref_lon = sum(all_lons) / len(all_lons)
+                    
+                    print(f"参考点设定为: lat={ref_lat:.6f}, lon={ref_lon:.6f}")
+                    
+                    # 处理每个角色的GPS数据
+                    for role in ['sender', 'receiver']:
+                        if role in current_analyzer.gps_data:
+                            gps_df = current_analyzer.gps_data[role]
+                            
+                            if (gps_df is not None and 
+                                hasattr(gps_df, 'empty') and not gps_df.empty):
+                                
+                                # 过滤掉nan值
+                                valid_rows = gps_df.dropna(subset=['latitude', 'longitude', 'timestamp'])
+                                
+                                # 限制数据量以避免过载，但取更多数据点
+                                sample_df = valid_rows.head(100) if len(valid_rows) > 100 else valid_rows
+                                
+                                points_added = 0
+                                for index, row in sample_df.iterrows():
+                                    try:
+                                        lat = float(row['latitude'])
+                                        lon = float(row['longitude'])
+                                        alt = float(row.get('altitude', 0))
+                                        
+                                        # 简化的坐标转换（近似）
+                                        x = (lon - ref_lon) * 111320 * math.cos(math.radians(ref_lat))
+                                        y = (lat - ref_lat) * 111320
+                                        
+                                        trajectory_data[role].append({
+                                            'x': round(x, 2),
+                                            'y': round(y, 2),
+                                            'z': round(alt, 2),
+                                            'timestamp': row['timestamp'].isoformat()
+                                        })
+                                        
+                                        points_added += 1
+                                        has_real_data = True
+                                        
+                                    except Exception as e:
+                                        print(f"处理{role} GPS数据行错误: {e}")
+                                        continue
+                                
+                                print(f"为{role}添加了{points_added}个GPS点")
+                else:
+                    print("没有找到有效的GPS坐标数据")
+                    
+        except Exception as e:
+            print(f"GPS数据处理错误: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # 安全的UDP指标数据处理
+        try:
+            metrics_added = 0
+            
+            # 优先使用接收方数据，因为它包含延迟信息
+            if (hasattr(current_analyzer, 'receiver_data') and 
+                isinstance(current_analyzer.receiver_data, dict) and
+                'udp' in current_analyzer.receiver_data and 
+                current_analyzer.receiver_data['udp'] is not None and
+                not current_analyzer.receiver_data['udp'].empty):
+                
+                udp_df = current_analyzer.receiver_data['udp']
+                print(f"使用接收方UDP数据，形状: {udp_df.shape}")
+                print(f"接收方UDP列: {list(udp_df.columns)}")
+                
+                # 限制数据量，取前50个数据点
+                sample_df = udp_df.head(50) if len(udp_df) > 50 else udp_df
+                
+                for index, row in sample_df.iterrows():
+                    try:
+                        if pd.notna(row.get('recv_timestamp')):
+                            delay_value = None
+                            if pd.notna(row.get('delay')):
+                                delay_value = float(row['delay']) * 1000  # 转换为毫秒
+                            
+                            trajectory_data['metrics'].append({
+                                'timestamp': row['recv_timestamp'].isoformat(),
+                                'delay': delay_value,
+                                'packet_loss': 0
+                            })
+                            metrics_added += 1
+                            has_real_data = True
+                    except Exception as e:
+                        print(f"处理接收方UDP数据行错误: {e}")
+                        continue
+                
+                print(f"从接收方添加了{metrics_added}个UDP指标数据点")
+                
+            # 如果接收方数据不可用，尝试发送方数据
+            elif (hasattr(current_analyzer, 'sender_data') and 
+                  isinstance(current_analyzer.sender_data, dict) and
+                  'udp' in current_analyzer.sender_data and 
+                  current_analyzer.sender_data['udp'] is not None and
+                  not current_analyzer.sender_data['udp'].empty):
+                
+                udp_df = current_analyzer.sender_data['udp']
+                print(f"使用发送方UDP数据，形状: {udp_df.shape}")
+                
+                # 限制数据量，取前50个数据点
+                sample_df = udp_df.head(50) if len(udp_df) > 50 else udp_df
+                
+                for index, row in sample_df.iterrows():
+                    try:
+                        if pd.notna(row.get('timestamp')):
+                            trajectory_data['metrics'].append({
+                                'timestamp': row['timestamp'].isoformat(),
+                                'delay': None,  # 发送方数据通常没有延迟信息
+                                'packet_loss': 0
+                            })
+                            metrics_added += 1
+                            has_real_data = True
+                    except Exception as e:
+                        print(f"处理发送方UDP数据行错误: {e}")
+                        continue
+                
+                print(f"从发送方添加了{metrics_added}个UDP指标数据点")
+                        
+        except Exception as e:
+            print(f"UDP数据处理错误: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # 安全的统计信息处理
+        try:
+            if (hasattr(current_analyzer, 'analysis_results') and 
+                current_analyzer.analysis_results and 
+                'udp' in current_analyzer.analysis_results):
+                
+                udp_stats = current_analyzer.analysis_results['udp']
+                trajectory_data['overall_stats'] = {
+                    'packet_loss_rate': udp_stats.get('packet_loss_rate', 0),
+                    'avg_delay': udp_stats.get('delay_stats', {}).get('mean', 0),
+                    'max_delay': udp_stats.get('delay_stats', {}).get('max', 0)
+                }
+                print(f"添加了UDP统计信息: {trajectory_data['overall_stats']}")
+        except Exception as e:
+            print(f"统计信息处理错误: {e}")
+        
+        # 如果没有找到真实数据，返回示例数据，但标记为示例
+        if not has_real_data:
+            print("没有找到真实数据，返回示例数据")
+            trajectory_data = {
+                'sender': [
+                    {'x': 0, 'y': 0, 'z': 0, 'timestamp': '2025-01-01T00:00:00'},
+                    {'x': 10, 'y': 10, 'z': 5, 'timestamp': '2025-01-01T00:01:00'}
+                ],
+                'receiver': [
+                    {'x': 100, 'y': 0, 'z': 0, 'timestamp': '2025-01-01T00:00:00'},
+                    {'x': 90, 'y': 10, 'z': 5, 'timestamp': '2025-01-01T00:01:00'}
+                ],
+                'timestamps': ['2025-01-01T00:00:00', '2025-01-01T00:01:00'],
+                'metrics': [
+                    {'timestamp': '2025-01-01T00:00:00', 'delay': 50, 'packet_loss': 0},
+                    {'timestamp': '2025-01-01T00:01:00', 'delay': 75, 'packet_loss': 0}
+                ],
+                'overall_stats': {
+                    'packet_loss_rate': 0,
+                    'avg_delay': 62.5,
+                    'max_delay': 75
+                },
+                'is_sample_data': True
+            }
+        else:
+            trajectory_data['is_sample_data'] = False
+            print(f"返回真实数据: sender={len(trajectory_data['sender'])}点, receiver={len(trajectory_data['receiver'])}点, metrics={len(trajectory_data['metrics'])}点")
+        
+        return jsonify(trajectory_data)
+        
+    except Exception as e:
+        print(f"轨迹数据API总体错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # 返回基本响应而不是错误
+        return jsonify({
+            'sender': [],
+            'receiver': [],
+            'timestamps': [],
+            'metrics': [],
+            'overall_stats': {},
+            'error': f'数据处理错误: {str(e)}',
+            'is_sample_data': False
+        })
 
 
 if __name__ == '__main__':
