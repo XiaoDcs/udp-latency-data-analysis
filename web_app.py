@@ -426,10 +426,12 @@ def download_report(dataset_name):
             results_json = json.dumps(current_analyzer.analysis_results, indent=2, default=str)
             zipf.writestr(f'{dataset_name}_analysis_results.json', results_json)
             
-            # 保存摘要
-            summary = get_analysis_summary()
-            summary_json = json.dumps(summary, indent=2, default=str)
-            zipf.writestr(f'{dataset_name}_summary.json', summary_json)
+            # 保存摘要 - 直接调用api_summary的逻辑
+            summary_response = api_summary()
+            if summary_response.status_code == 200:
+                summary_data = summary_response.get_json()
+                summary_json = json.dumps(summary_data, indent=2, default=str)
+                zipf.writestr(f'{dataset_name}_summary.json', summary_json)
             
             # 保存所有图表为HTML
             for name, fig in current_visualizer.figures.items():
