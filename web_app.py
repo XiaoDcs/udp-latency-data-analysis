@@ -14,6 +14,9 @@ import pandas as pd
 import shutil
 from werkzeug.utils import secure_filename
 
+# 设置环境变量（用于生产部署）
+os.environ.setdefault('FLASK_ENV', 'production')
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads'
